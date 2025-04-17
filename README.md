@@ -34,8 +34,6 @@ Job_Booster automates and optimizes your job applications by:
 
 ## Architecture
 
-![Architecture Diagram](docs/architecture.png)  
-
 1. **FastAPI Backend** hosts Pydantic‑AI agents  
 2. **Standard MCP Servers** (`fetch`, `llm`, `embed`, `sqlite`, `memory`, `vector‑memory`) run as separate processes  
 3. **Custom Parser Server** (FastAPI + OCR, Word/PDF logic)  
@@ -104,7 +102,7 @@ See OpenAPI docs at `/docs` for full endpoints and schemas.
 
 ## Project Structure
 
-```
+```plaintext
 Job_Booster/
 ├── backend/                  # FastAPI & agents
 ├── common/                   # Shared Pydantic models
