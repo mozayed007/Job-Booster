@@ -1,0 +1,21 @@
+# Core dependencies
+fastapi
+uvicorn
+pydantic
+pydantic-ai
+logfire
+
+# Parsing & OCR
+python-docx
+pytesseract
+Pillow
+
+# Database & storage
+sqlite3
+
+
+# Testing & dev
+pytest
+pre-commit
+black
+isort
