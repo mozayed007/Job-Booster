@@ -98,8 +98,6 @@ curl http://localhost:8000/docs
 3. **Get synthesized resume:** `GET /get_synthesized_resume/{jobId}`  
 4. **Fetch analysis & feedback:** `GET /get_analysis/{jobId}`  
 
-See OpenAPI docs at `/docs` for full endpoints and schemas.
-
 ## Project Structure
 
 ```plaintext
@@ -122,8 +120,6 @@ Job_Booster/
 2. Create a feature branch  
 3. Write tests & update docs  
 4. Submit a PR  
-
-Please follow our [Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## License
 
