@@ -1,0 +1,67 @@
+JOHN SMITH
+Software Developer
+john.smith@example.com | (555) 123-4567 | linkedin.com/in/johnsmith
+San Francisco, CA
+
+PROFESSIONAL SUMMARY
+-----------------
+Innovative software developer with 6+ years of experience building robust applications and services. Passionate about clean code, performance optimization, and user-centered design. Strong expertise in Python, JavaScript, and cloud technologies with a track record of delivering high-quality solutions on time.
+
+SKILLS
+------
+Programming Languages: Python, JavaScript, TypeScript, SQL, HTML, CSS
+Frameworks & Libraries: React, Node.js, Express, FastAPI, Django, Flask, SQLAlchemy
+Cloud & DevOps: AWS, Docker, Kubernetes, CI/CD pipelines
+Databases: PostgreSQL, MongoDB, Redis
+Tools: Git, JIRA, Confluence, VS Code, PyCharm
+Soft Skills: Problem-solving, communication, teamwork, mentoring
+
+WORK EXPERIENCE
+--------------
+Senior Software Developer
+Technovate Solutions | San Francisco, CA | January 2020 - Present
+- Architected and developed a distributed data processing pipeline that handles 50+ million events daily, reducing processing time by 40%
+- Led a team of 5 developers in redesigning the company's main product, resulting in a 30% increase in user engagement
+- Implemented automated testing workflows that improved code coverage by 25% and reduced bugs in production by 35%
+- Optimized database queries and API endpoints, reducing average response time from 300ms to 80ms
+- Mentored junior developers through code reviews, pair programming, and knowledge sharing sessions
+
+Software Developer
+DataTech Inc. | Oakland, CA | March 2017 - December 2019
+- Developed RESTful APIs and microservices using Python, FastAPI, and PostgreSQL
+- Created a dashboard to visualize key metrics using React, improving business decision making
+- Implemented data synchronization between legacy systems and new applications
+- Collaborated with product managers and designers to refine application features based on user feedback
+- Reduced infrastructure costs by 20% through optimizing cloud resource utilization
+
+Junior Developer
+WebStart Technologies | San Jose, CA | June 2015 - February 2017
+- Built responsive web interfaces using JavaScript, HTML, and CSS
+- Contributed to backend development using Node.js and Express
+- Participated in daily stand-ups and biweekly sprint planning
+- Fixed critical bugs and implemented new features in an e-commerce platform
+
+EDUCATION
+---------
+Bachelor of Science in Computer Science
+University of California, Berkeley | 2011 - 2015
+- GPA: 3.7/4.0
+- Relevant coursework: Data Structures, Algorithms, Database Systems, Operating Systems, Web Development
+
+PROJECTS
+--------
+Personal Finance Dashboard (github.com/johnsmith/finance-dashboard)
+- Created a full-stack application for tracking personal finances using React, Node.js, and MongoDB
+- Implemented data visualization using D3.js and authentication using JWT
+- Deployed the application using Docker and AWS
+
+Open Source Contributions
+- Contributed to several popular Python libraries including FastAPI, SQLAlchemy, and Pytest
+- Fixed bugs, improved documentation, and added new features
+- Active participant in programming communities and forums
+
+CERTIFICATIONS
+-------------
+- AWS Certified Developer – Associate (2022)
+- MongoDB Certified Developer (2021)
+- Professional Scrum Master I (PSM I) (2020)

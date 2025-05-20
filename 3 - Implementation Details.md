@@ -1,50 +1,51 @@
+# 🧩 Job_Booster: Core Implementation Details (MVP Refactor)
 
-# 🧩 Job_Booster: Core Implementation Details
+## 3.1. Core Service Integration (Simplified MVP) ⚙️
 
-## 5.1. Leveraging the MCP Ecosystem ⚙️
+(Note: The following sections describe the implementation details. Current code provides the foundational structure, with detailed logic being progressively developed.)
 
-* **`MCP Python SDK` Usage:** 🐍 Central to agent-server interaction via the `MCPClientFactory` in the backend.
-* **Standard Server Launch & Management:** **[Update]**
-  * **Source:** Standard server code is included in the project (e.g., via submodule in `mcp_servers/standard_servers/modelcontextprotocol_servers_src/`).
-  * **Launch Script (`run_servers.py`):** A Python script is responsible for:
-    * Reading configuration (ports, keys, paths) for each standard server from `configs/services.yaml` or environment variables.
-    * Importing the main application/entry point for each standard server (e.g., `from modelcontextprotocol_servers_src.fetch.app import main as fetch_main`).
-    * Launching each server as a separate process using `multiprocessing.Process` or `subprocess.Popen`. Requires careful handling of arguments, environment variables, and process lifecycle (startup, shutdown).
-    * **Dependency Hell:** Managing dependencies listed in `mcp_servers/requirements_servers.txt` for all servers simultaneously is a major challenge. Using separate virtual environments per server, managed by the script, adds complexity.
-  * **Configuration:** Each server process needs its environment correctly set up by `run_servers.py`.
-* **Custom `mcp-parser-server` Rationale & Design:** 🧩 (Same rationale, likely still run as a container via Docker Compose for simplicity).
-* **`sqlite` Server Usage:** 🗄️ Launched as a Python process via `run_servers.py`. Needs the path to the SQLite DB file configured. Accessed via SDK client.
-* **`memory` (KG) Server Usage:** 🧠 Launched as a Python process via `run_servers.py`. Needs configuration for its backend store. Accessed via SDK client.
-* **Vector Storage Decision (`vector-memory` vs. Direct):** 📉 Evaluation still needed. If `vector-memory` is used, it's launched via `run_servers.py`. If direct, the backend uses the DB SDK directly.
+In the MVP architecture, functionalities previously envisioned as separate MCP servers are integrated as services directly within the main FastAPI application. This simplifies the system by removing inter-process communication overhead for core features.
 
-## 5.2. Agent Intelligence & Orchestration 🤖🔥
+* **Internal Service Calls:** Agents and API handlers in `app/agents/` and `app/main.py` directly import and call methods from service modules located in `app/services/` (e.g., `parsing_service.py`, `db_service.py`, `llm_service.py`).
+* **Integrated Core Services:** Each service module provides specialized functionality within the single FastAPI application:
+  * `app/services/db_service.py`: Handles all SQLite database operations directly using SQLAlchemy.
+  * `app/services/parsing_service.py`: Contains logic for document parsing and may call an LLM service for understanding content.
+  * `app/services/llm_service.py`: Encapsulates all interactions with the chosen LLM (Google Gemini via ADK).
+* **Configuration:** Application-wide configurations, including database URLs, API keys for external LLMs, etc., are managed centrally, typically loaded from environment variables (`.env` file) and accessed via `app/core/config.py`.
+* **Dependency Management:** All Python dependencies for the application, including those for parsing, database interaction, and LLM SDKs, are managed in a single `requirements.txt` file.
 
-* **Agent = Orchestrator + Reasoning Engine:** The Pydantic-AI agents are not just calling tools; they are deciding *when* to call them, *what* context to provide, how to *interpret* the results, and how to *combine* information from multiple sources (`sqlite`, `memory`, `llm`, `vector-memory`).
-* **Workflow Example (Synthesizer Agent):**
-    1. Receive Trigger (Job ID, User ID).
-    2. Query `sqlite` (via SDK) for parsed Job Desc schema.
-    3. Query `sqlite` & `memory` (via SDK) for relevant User skills/experience based on Job Desc keywords/entities.
-    4. Prepare detailed prompt for `llm` (via SDK) including:
-        * Job Requirements.
-        * Relevant user data retrieved from KG/SQLite (potentially summarized).
+## 3.2. Agent Intelligence & Orchestration (Simplified MVP) 🤖🔥
+
+(Note: The agent workflows and logic described below outline the implementation details being progressively developed.)
+
+* **Agent = Orchestrator + Reasoning Engine:** The agents in `app/agents/` remain the core intelligence. They decide *when* to call various internal services, *what* data to pass, how to *interpret* the results, and how to *combine* information from multiple sources (e.g., database, LLM responses).
+* **Workflow Example (ResumeTailor Agent in `app/agents/resume_tailor.py`):**
+    1. Receive Trigger (e.g., Job ID, User ID, resume file) from an API endpoint.
+    2. Call `parsing_service.parse_resume(file)` to extract text and structure from the uploaded resume.
+    3. Call `parsing_service.parse_job_description(job_desc_text_or_url)` to get structured job details.
+    4. Call `db_service.store_parsed_resume(...)` and `db_service.store_parsed_job(...)` to save the initial structured data.
+    5. Retrieve relevant user profile information or past successful applications from `db_service`.
+    6. Prepare a detailed prompt for the `llm_service.generate_tailored_text(...)` method, including:
+        * Structured Job Requirements from `parsing_service`.
+        * Structured User Resume data from `parsing_service` and `db_service`.
         * Instructions to synthesize a tailored resume, emphasizing specific skills/experiences.
-        * Target output structure (mentioning the `Resume` model fields).
-    5. Receive LLM response.
-    6. Validate/parse the LLM response into the `Resume` Pydantic model. Handle potential validation errors (e.g., instruct LLM to retry with corrections).
-    7. Store/return the synthesized `Resume` object.
-* **Handling Multiple Resumes:** The core synthesis logic must intelligently merge information. This could involve:
-  * Using timestamps/recency if available.
-  * Prioritizing experiences explicitly matching job requirements (identified via KG/Vector search/LLM analysis).
-  * Asking the LLM to resolve conflicting information based on context.
-  * Building a comprehensive profile in the KG/SQLite first, then synthesizing from that unified view.
-* **Prompt Engineering:** Crafting effective prompts for the `llm` server (passed via the SDK client) is critical for quality synthesis, analysis, and generation. Store prompts potentially in `backend/agents/prompts`.
+        * Target output structure (potentially guided by Pydantic models like `app/models/resume_model.py` or `app/models/api_models.py`).
+    7. Receive the LLM's response from `llm_service`.
+    8. Validate/parse the LLM response. Handle potential errors (e.g., retry with modified prompt).
+    9. Call `db_service.store_tailored_resume(...)` to save the final output.
+    10. Return the tailored resume content or a success indicator to the API layer.
 
-## 5.3. Ensuring Observability with Logfire 🪵📡
+    This workflow occurs through direct Python calls within the single application process.
+* **Handling Multiple Resumes/Complex Profiles:** The agent logic must intelligently merge information if a user has multiple resume versions or extensive history. This might involve:
+  * Prioritizing experiences that directly match job requirements (identified via LLM analysis or keyword matching within the agent).
+  * Using the `llm_service` to synthesize a comprehensive professional summary before tailoring.
+  * Building a unified user profile representation within the agent or using `db_service` to store and retrieve a canonical version.
+* **Prompt Engineering:** Crafting effective prompts for `llm_service` remains critical. Prompts are stored in `app/prompts/` and loaded by the agents or LLM service.
+
+## 3.3. Ensuring Observability with Logging/Tracing (Simplified MVP) 🪵📚📡
 
 * **Instrumentation:**
-  * **Backend:** `logfire.instrument_fastapi(app)`, SDK instrumentation.
-  * **Custom Parser Server:** `logfire.instrument_fastapi(app)`.
-  * **Standard Servers (Python Processes):** **[Update] The `run_servers.py` script OR the entry point of each standard server *must* call `logfire.configure()` with a unique `service_name` and apply necessary instrumentation (e.g., `logfire.instrument_fastapi`) before starting the server's web framework (e.g., Uvicorn/FastAPI).** This requires modifying/wrapping the standard server startup if not already supported.
-* **Tracing:** SDK handles propagation *if* configured correctly in *all* participating processes (Backend + All Server Processes).
-* **Logging:** Structured logging needed in Backend, Custom Parser, and potentially adding more within standard servers if needed.
-* **Goal:** Full end-to-end trace visibility, requiring successful instrumentation across all Python processes.
+  * **Main Application (`app/main.py`):** If using a library like `Logfire` or standard OpenTelemetry, instrument the FastAPI app: `logfire.instrument_fastapi(app)` or equivalent OTel setup. This captures API requests and can trace calls to internal services if they are also instrumented or if auto-instrumentation is effective.
+* **Tracing:** With a single-process application, tracing primarily helps understand the flow and performance of requests through different internal modules (API layer -> agents -> services). Context propagation is handled within the process by the tracing library.
+* **Logging:** Structured logging (e.g., using `loguru` or the standard `logging` module) should be configured centrally (e.g., in `app/core/config.py` or `app/main.py`) to provide detailed operational logs. This helps in debugging and monitoring application behavior.
+* **Goal:** Clear visibility into request handling, agent decision-making, service interactions, and any errors encountered within the application.

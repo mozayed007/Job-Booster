@@ -1,22 +1,40 @@
 # Core dependencies
-fastapi
-uvicorn
-pydantic
-pydantic-ai
-logfire
+fastapi==0.100.0
+uvicorn==0.22.0
+pydantic==2.1.1
+pydantic[email]==2.1.1
+pydantic-settings==2.0.3
+loguru==0.7.0
+gradio==3.40.1
+python-dotenv==1.0.0
+google-adk==0.4.0
+requests==2.31.0
+starlette==0.27.0
+sqlalchemy==2.0.19
+typing-extensions==4.7.1
+
+# Model Context Protocol (MCP)
+# modelcontextprotocol-sdk==0.1.0 # Removed as per refactoring to single FastAPI app
 
 # Parsing & OCR
-python-docx
-pytesseract
-Pillow
+python-docx==0.8.11
+pytesseract==0.3.10
+pillow==10.0.0
+PyPDF2==3.0.1
+pdf2image==1.17.0
 
-# Database & storage
-sqlite3
+# Database
+alembic==1.11.1
 
+# Testing & development
+pytest==7.4.0
+pre-commit==3.3.3
+black==23.7.0
+isort==5.12.0
+ruff==0.0.278
 
-# Testing & dev
-pytest
-pre-commit
-black
-isort
-openai
+# Additional utilities
+tqdm==4.65.0
+numpy==1.25.1
+aiofiles==23.1.0
+json5==0.9.14

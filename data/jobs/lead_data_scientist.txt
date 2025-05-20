@@ -1,0 +1,60 @@
+Lead Data Scientist - AI/ML Applications
+
+DataInsight Analytics
+Seattle, WA (Remote-friendly)
+$145,000 - $185,000 per year + benefits
+
+About Us:
+DataInsight Analytics is a leader in AI-powered business intelligence solutions, helping Fortune 500 companies transform raw data into strategic insights. Our platform combines advanced analytics, machine learning, and intuitive visualizations to enable data-driven decision making across industries. With recent Series C funding of $45M, we're rapidly expanding our data science team to pioneer innovative solutions that solve complex business challenges.
+
+Job Description:
+We're looking for a Lead Data Scientist to join our AI/ML Applications team. In this role, you'll spearhead the development of sophisticated machine learning models that power our predictive analytics platform. You'll collaborate with cross-functional teams to understand business problems, design data science solutions, and drive implementation from concept to production.
+
+Responsibilities:
+• Lead the development of machine learning models and algorithms to solve complex business problems
+• Design and implement end-to-end data science pipelines from data collection to model deployment
+• Translate business requirements into technical specifications for data science projects
+• Conduct exploratory data analysis to uncover patterns, trends, and insights
+• Evaluate and select appropriate modeling techniques, feature engineering approaches, and validation methods
+• Collaborate with data engineers to optimize data pipelines and processing workflows
+• Work with software engineers to integrate models into production systems
+• Mentor junior data scientists and provide technical guidance to the team
+• Stay current with cutting-edge research and technologies in AI/ML
+• Communicate findings and recommendations to technical and non-technical stakeholders
+
+Requirements:
+• 5+ years of professional experience in data science or machine learning
+• Master's or PhD in Computer Science, Statistics, Mathematics, or related field
+• Strong programming skills in Python with proficiency in data science libraries (NumPy, Pandas, Scikit-learn)
+• Experience with deep learning frameworks such as TensorFlow or PyTorch
+• Solid understanding of machine learning algorithms, statistical modeling, and experimental design
+• Expertise in feature engineering, model evaluation, and hyperparameter tuning
+• Experience with NLP, computer vision, time series analysis, or recommender systems
+• Proficiency with SQL and experience working with large datasets
+• Knowledge of distributed computing frameworks (Spark, Dask)
+• Proven track record of deploying ML models to production environments
+• Excellent communication skills with the ability to explain complex concepts to diverse audiences
+
+Preferred Qualifications:
+• Experience with MLOps tools and practices (MLflow, Kubeflow, etc.)
+• Knowledge of cloud platforms (AWS, GCP, Azure) and their ML services
+• Familiarity with containerization (Docker) and orchestration (Kubernetes)
+• Experience with real-time prediction systems and model serving
+• Understanding of responsible AI practices and model interpretability
+• Prior experience leading data science teams or projects
+• Publications in top ML conferences or journals
+• Contributions to open-source data science projects
+
+Benefits:
+• Competitive salary and equity package
+• Comprehensive health, dental, and vision insurance
+• 401(k) with 4% company match
+• Remote-friendly work environment with flexible hours
+• Unlimited PTO policy
+• Annual professional development budget ($5,000)
+• Home office stipend and monthly internet reimbursement
+• Weekly team lunch allowance
+• Quarterly team retreats and annual company summits
+• Parental leave and childcare assistance programs
+
+DataInsight Analytics is committed to building a diverse and inclusive workplace. We are an equal opportunity employer and do not discriminate on the basis of race, religion, color, national origin, gender, sexual orientation, age, marital status, veteran status, or disability status.
