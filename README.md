@@ -18,15 +18,16 @@
 
 Job_Booster aims to automate and significantly enhance the job application process by intelligently leveraging a user's entire work history. For the Hackathon MVP, it focuses on parsing resumes and job descriptions, and leveraging AI to tailor application materials.
 
-This MVP is built as a **single, integrated FastAPI application** using **Google ADK with Google Gemini** for its AI capabilities. Note that while the architectural components are defined, their detailed implementations are currently in a "To-Do" state, planned for progressive development during the hackathon.
+This MVP is built as a **single, integrated FastAPI application with a Gradio UI** using **Google ADK with Google Gemini** for its AI capabilities. Note that the current code provides the foundational structure, with detailed logic being progressively developed during the hackathon.
 
 ## Features
 
-(All features are currently in a foundational/stubbed state, pending full implementation)
+(All features are being progressively developed)
 
 - **Intelligent Document Parsing**: Extracts structured data from resumes (PDF, DOCX, TXT) and job descriptions using `app/services/parsing_service.py`.
 - **AI-Powered Content Generation**: Utilizes Google Gemini via Google ADK (managed by `app/services/llm_service.py`) for tasks like resume tailoring and analysis.
 - **Data Persistence**: Stores and retrieves parsed and generated data using an SQLite database, managed by `app/services/db_service.py`.
+- **Vector Similarity**: Performs vector similarity search using vector indexes stored as files or within SQLite for quantitative match scoring.
 - **Web Interface**: A simple Gradio UI (`app/frontend.py`) for user interaction.
 
 ## Architecture (MVP)
@@ -57,7 +58,7 @@ graph TD
     style D fill:#2E8B57,stroke:#555,stroke-width:2px
 ```
 
-Key components reside within the `app/` directory:
+Key components reside within the `app/` directory as detailed in section 2.1 of the Architecture document:
 - `app/main.py`: The main FastAPI application, routing, and startup logic.
 - `app/services/`: Contains `parsing_service.py`, `db_service.py`, and `llm_service.py`.
 - `app/agents/`: Houses the agentic logic (e.g., `resume_tailor.py`).
@@ -120,23 +121,24 @@ python scripts/run_app.py
 # Alternatively, run directly: uvicorn app.main:app --reload --port 8000
 ```
 
-This launches the FastAPI backend (default: http://localhost:8000) which also serves the Gradio UI (usually at the root `/` or a specific path like `/ui` depending on `app/main.py` configuration).
+This launches the FastAPI backend (default: <http://localhost:8000>) which also serves the Gradio UI (usually at the root `/` or a specific path like `/ui` depending on `app/main.py` configuration).
 
-- FastAPI Swagger docs: http://localhost:8000/docs
-- Gradio UI: http://localhost:8000 (or specific path configured)
+- FastAPI Swagger docs: <http://localhost:8000/docs>
+- Gradio UI: <http://localhost:8000> (or specific path configured)
 
 ## Usage
 
 The application provides a Gradio interface, typically accessible via the root URL of the FastAPI server once started. It will guide you through:
 
-1.  **Uploading/Pasting Resume**: Provide your resume as a file (PDF, DOCX, TXT).
-2.  **Pasting Job Description**: Input the job description text.
-3.  **Processing**: The backend agents and services will parse the documents, use Google Gemini for analysis and generation, and store results.
-4.  **Viewing Results**: The UI will display tailored content, analysis, or feedback.
+1. **Uploading/Pasting Resume**: Provide your resume as a file (PDF, DOCX, TXT).
+2. **Pasting Job Description**: Input the job description text.
+3. **Processing**: The backend agents and services will parse the documents, use Google Gemini for analysis and generation, and store results.
+4. **Viewing Results**: The UI will display tailored content, analysis, or feedback.
 
 ### Sample Data
 
 Sample files for testing can be found in the `data/` directory:
+
 - `data/resumes/`
 - `data/jobs/`
 
@@ -176,9 +178,9 @@ Job_Booster/
 │   └── run_app.py
 ├── tests/                    # Test suite
 │   └── ...
-├── 1 - Vision & Goals.md     # Project vision and goals (in root)
-├── 2 - Architecutre & structures.md # Architecture details (in root)
-├── 3 - Implementation Details.md  # Implementation specifics (in root)
+├── 1 - Vision & Goals.md     # Project vision and goals (sections 1.1-1.3)
+├── 2 - Architecture & structures.md # Architecture details (sections 2.1-2.4)
+├── 3 - Implementation Details.md  # Implementation specifics (sections 3.1-3.3)
 ├── Hackathon_MVP_Plan.md     # MVP plan (in root)
 ├── .env.example              # Example environment file
 ├── .gitignore
