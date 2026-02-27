@@ -4,16 +4,21 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional, Union
 from uuid import UUID, uuid4
 
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field
 
 
 class JobBoosterBase(BaseModel):
     """Base model with common fields for Job_Booster models."""
-    # To-Do: Define model fields and Config
-    pass
+
+    class Config:
+        """Pydantic configuration."""
+        populate_by_name = True
+        from_attributes = True
+        json_encoders = {datetime: lambda v: v.isoformat()}
 
 
 class BaseResponse(BaseModel):
     """Base response model for API endpoints."""
-    # To-Do: Define model fields
-    pass
+    success: bool = True
+    message: str = "OK"
+    timestamp: datetime = Field(default_factory=datetime.utcnow)

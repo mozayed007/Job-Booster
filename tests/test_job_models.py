@@ -1,136 +1,160 @@
-"""Tests for job models."""
+"""Tests for job description models."""
 
+import sys
+import os
 import unittest
-from uuid import UUID
 
-from common.models.job import JobPosting, CompanyInfo, Requirement, Responsibility, Benefit
+# Ensure the project root is on the path.
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from app.models.job_model import (
+    Benefit,
+    CompanyInfo,
+    JobPosting,
+    Requirement,
+    Responsibility,
+)
 
 
-class TestJobModels(unittest.TestCase):
-    """Test cases for job models."""
-    
-    @unittest.skip("Model fields stubbed")
+class TestCompanyInfo(unittest.TestCase):
+    """Test cases for CompanyInfo model."""
+
     def test_company_info_creation(self):
-        """Test creation of a CompanyInfo object."""
-        company_info = CompanyInfo(
+        """Full CompanyInfo construction."""
+        company = CompanyInfo(
             name="Tech Innovations Inc.",
             industry="Software Development",
             location="San Francisco, CA",
             website="https://techinnovations.example.com",
             description="A leading software development company",
-            size="Medium"
+            size="Medium",
         )
-        
-        self.assertEqual(company_info.name, "Tech Innovations Inc.")
-        self.assertEqual(company_info.industry, "Software Development")
-        self.assertEqual(company_info.location, "San Francisco, CA")
-        self.assertEqual(company_info.website, "https://techinnovations.example.com")
-        self.assertEqual(company_info.description, "A leading software development company")
-        self.assertEqual(company_info.size, "Medium")
-        self.assertIsInstance(company_info.id, UUID)
-    
-    @unittest.skip("Model fields stubbed")
-    def test_requirement_creation(self):
-        """Test creation of a Requirement object."""
-        requirement = Requirement(
-            description="5+ years of experience with Python",
+        self.assertEqual(company.name, "Tech Innovations Inc.")
+        self.assertEqual(company.industry, "Software Development")
+        self.assertEqual(company.location, "San Francisco, CA")
+        self.assertEqual(company.website, "https://techinnovations.example.com")
+        self.assertEqual(company.size, "Medium")
+
+    def test_company_info_minimal(self):
+        """CompanyInfo can be created with no fields."""
+        company = CompanyInfo()
+        self.assertIsNone(company.name)
+
+
+class TestRequirement(unittest.TestCase):
+    """Test cases for Requirement model."""
+
+    def test_requirement_required(self):
+        """Required requirement."""
+        req = Requirement(
+            description="5+ years Python experience",
             is_required=True,
-            category="Technical",
-            extracted_skills=["Python"]
+            category="experience",
         )
-        
-        self.assertEqual(requirement.description, "5+ years of experience with Python")
-        self.assertTrue(requirement.is_required)
-        self.assertEqual(requirement.category, "Technical")
-        self.assertEqual(requirement.extracted_skills, ["Python"])
-        self.assertIsInstance(requirement.id, UUID)
-    
-    @unittest.skip("Model fields stubbed")
+        self.assertEqual(req.description, "5+ years Python experience")
+        self.assertTrue(req.is_required)
+        self.assertEqual(req.category, "experience")
+
+    def test_requirement_preferred(self):
+        """Optional/preferred requirement."""
+        req = Requirement(
+            description="Experience with FastAPI is a plus",
+            is_required=False,
+        )
+        self.assertFalse(req.is_required)
+
+    def test_requirement_default_is_required(self):
+        """is_required should default to True."""
+        req = Requirement(description="Must have X")
+        self.assertTrue(req.is_required)
+
+
+class TestResponsibility(unittest.TestCase):
+    """Test cases for Responsibility model."""
+
     def test_responsibility_creation(self):
-        """Test creation of a Responsibility object."""
-        responsibility = Responsibility(
+        """Basic Responsibility creation."""
+        resp = Responsibility(
             description="Design and implement scalable backend services",
-            extracted_skills=["Backend Development", "System Design"]
+            category="engineering",
         )
-        
-        self.assertEqual(responsibility.description, "Design and implement scalable backend services")
-        self.assertEqual(responsibility.extracted_skills, ["Backend Development", "System Design"])
-        self.assertIsInstance(responsibility.id, UUID)
-    
-    @unittest.skip("Model fields stubbed")
+        self.assertEqual(resp.description, "Design and implement scalable backend services")
+        self.assertEqual(resp.category, "engineering")
+
+    def test_responsibility_no_category(self):
+        """Category is optional."""
+        resp = Responsibility(description="Lead team meetings")
+        self.assertIsNone(resp.category)
+
+
+class TestBenefit(unittest.TestCase):
+    """Test cases for Benefit model."""
+
     def test_benefit_creation(self):
-        """Test creation of a Benefit object."""
-        benefit = Benefit(
-            description="Comprehensive health insurance",
-            category="Health"
-        )
-        
+        """Full Benefit construction."""
+        benefit = Benefit(description="Comprehensive health insurance", category="health")
         self.assertEqual(benefit.description, "Comprehensive health insurance")
-        self.assertEqual(benefit.category, "Health")
-        self.assertIsInstance(benefit.id, UUID)
-    
-    @unittest.skip("Model fields stubbed")
-    def test_job_posting_creation(self):
-        """Test creation of a complete JobPosting object."""
-        company_info = CompanyInfo(
-            name="Tech Innovations Inc.",
-            location="San Francisco, CA",
-            industry="Software Development"
-        )
-        
-        requirements = [
-            Requirement(
-                description="5+ years of experience with Python",
-                is_required=True,
-                extracted_skills=["Python"]
-            ),
-            Requirement(
-                description="Experience with FastAPI is a plus",
-                is_required=False,
-                extracted_skills=["FastAPI"]
-            )
+        self.assertEqual(benefit.category, "health")
+
+
+class TestJobPosting(unittest.TestCase):
+    """Test cases for the JobPosting aggregate model."""
+
+    def test_job_posting_full_creation(self):
+        """Full JobPosting construction."""
+        company = CompanyInfo(name="Acme Inc.", location="NYC", industry="Tech")
+        reqs = [
+            Requirement(description="5+ years Python", is_required=True),
+            Requirement(description="FastAPI nice-to-have", is_required=False),
         ]
-        
-        responsibilities = [
-            Responsibility(
-                description="Design and implement scalable backend services",
-                extracted_skills=["Backend Development", "System Design"]
-            )
-        ]
-        
-        benefits = [
-            Benefit(
-                description="Comprehensive health insurance",
-                category="Health"
-            )
-        ]
-        
-        job_posting = JobPosting(
+        resps = [Responsibility(description="Build APIs")]
+        benefits = [Benefit(description="Unlimited PTO", category="lifestyle")]
+
+        job = JobPosting(
             title="Senior Python Developer",
-            company_info=company_info,
-            description="We're looking for an experienced Python developer to join our team.",
-            location="San Francisco, CA",
-            job_type="Full-time",
-            experience_level="Senior",
-            requirements=requirements,
-            responsibilities=responsibilities,
+            company=company,
+            location="New York, NY",
+            remote_type="hybrid",
+            employment_type="full-time",
+            experience_level="senior",
+            description="We need a great Python dev.",
+            requirements=reqs,
+            responsibilities=resps,
             benefits=benefits,
-            required_skills=["Python", "API Development"],
-            preferred_skills=["FastAPI", "Docker"]
+            required_skills=["Python", "FastAPI"],
+            preferred_skills=["Docker", "Kubernetes"],
+            keywords=["python", "backend", "rest"],
         )
-        
-        self.assertEqual(job_posting.title, "Senior Python Developer")
-        self.assertEqual(job_posting.company_info.name, "Tech Innovations Inc.")
-        self.assertEqual(job_posting.description, "We're looking for an experienced Python developer to join our team.")
-        self.assertEqual(job_posting.location, "San Francisco, CA")
-        self.assertEqual(job_posting.job_type, "Full-time")
-        self.assertEqual(job_posting.experience_level, "Senior")
-        self.assertEqual(len(job_posting.requirements), 2)
-        self.assertEqual(len(job_posting.responsibilities), 1)
-        self.assertEqual(len(job_posting.benefits), 1)
-        self.assertEqual(job_posting.required_skills, ["Python", "API Development"])
-        self.assertEqual(job_posting.preferred_skills, ["FastAPI", "Docker"])
-        self.assertIsInstance(job_posting.id, UUID)
+
+        self.assertEqual(job.title, "Senior Python Developer")
+        self.assertIsNotNone(job.company)
+        self.assertEqual(job.company.name if job.company else None, "Acme Inc.")
+        self.assertEqual(job.location, "New York, NY")
+        self.assertEqual(job.remote_type, "hybrid")
+        self.assertEqual(job.employment_type, "full-time")
+        self.assertEqual(len(job.requirements), 2)
+        self.assertEqual(len(job.responsibilities), 1)
+        self.assertEqual(len(job.benefits), 1)
+        self.assertIn("Python", job.required_skills)
+        self.assertIn("Docker", job.preferred_skills)
+        self.assertIsNotNone(job.id)
+
+    def test_job_posting_defaults(self):
+        """Empty JobPosting should have empty lists and None fields."""
+        job = JobPosting()
+        self.assertEqual(job.requirements, [])
+        self.assertEqual(job.responsibilities, [])
+        self.assertEqual(job.benefits, [])
+        self.assertEqual(job.required_skills, [])
+        self.assertEqual(job.preferred_skills, [])
+        self.assertIsNone(job.title)
+
+    def test_job_posting_serialisation(self):
+        """JobPosting should serialise to dict via model_dump."""
+        job = JobPosting(title="Engineer", required_skills=["Python"])
+        data = job.model_dump()
+        self.assertEqual(data["title"], "Engineer")
+        self.assertIn("Python", data["required_skills"])
 
 
 if __name__ == "__main__":

@@ -98,7 +98,10 @@ def start_server(server: dict) -> None:
     
     # Monitor the process output
     ready = False
-    for line in iter(process.stdout.readline, ""):
+    stdout = process.stdout
+    if stdout is None:
+        return
+    for line in iter(stdout.readline, ""):
         if not line:
             break
         

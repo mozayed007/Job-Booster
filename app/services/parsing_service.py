@@ -4,275 +4,390 @@ This module contains classes for document text extraction (PDF, DOCX, OCR)
 and LLM-based parsing for structuring the extracted text.
 """
 
-import os
 import io
 import json
+import os
 import tempfile
-from typing import Any, Dict, List, Optional, Union
 from pathlib import Path
-import logging
+from typing import Any, Dict, List, Optional, Union
 
-import docx
-from loguru import logger # Retaining loguru as it was used in the original parser logic
-import pytesseract
-from PIL import Image
-import PyPDF2
-from pdf2image import convert_from_bytes # For converting PDF to images
+from loguru import logger
 
-# Attempting to import original model paths, will be updated later
-# These will cause errors until imports are fixed globally
-# from common.models.resume import Resume, ContactInfo, Education, WorkExperience, Skill
-# from common.models.job import JobPosting, CompanyInfo, Requirement, Responsibility
-from app.models.resume_model import Resume, ContactInfo, Education, WorkExperience, Skill # Corrected
-from app.models.job_model import JobPosting, CompanyInfo, Requirement, Responsibility # Corrected
+from app.models.job_model import (
+    Benefit,
+    CompanyInfo,
+    JobPosting,
+    Requirement,
+    Responsibility,
+)
+from app.models.resume_model import (
+    Certification,
+    ContactInfo,
+    Education,
+    Project,
+    Resume,
+    Skill,
+    WorkExperience,
+)
+from app.services.llm_service import LLMService
 
-# Import Google ADK Agent (if used directly by ParserLLM)
-# from google.adk.agents import Agent
-# from google.adk.common import Message
+# ---------------------------------------------------------------------------
+# Constants
+# ---------------------------------------------------------------------------
 
-# Placeholder for ADK Agent, actual import and initialization will depend on final ADK setup
-Agent = None 
-Message = None
+PROMPTS_DIR = Path(__file__).parent.parent / "prompts"
+RESUME_PROMPT_FILE = PROMPTS_DIR / "resume_parser_prompt.md"
+JOB_PROMPT_FILE = PROMPTS_DIR / "job_parser_prompt.md"
 
-class ParserLLM:
-    """LLM client for parsing documents.
-    
-    This class will be responsible for interacting with the chosen LLM (e.g., Gemini via ADK)
-    to parse text extracted from documents into structured data.
-    """
 
-    def __init__(self):
-        """Initialize the LLM client."""
-        # To-Do: Initialize ADK Agent with Gemini model or other LLM client
-        logger.info("Stubbed ParserLLM __init__ called.")
-        self.agent = None # Placeholder for ADK Agent or other LLM client instance
-
-    def parse_text(self, text: str, prompt_template: str) -> Dict[str, Any]:
-        """Parse text using the LLM.
-
-        Args:
-            text: The text to parse.
-            prompt_template: The prompt template to use.
-
-        Returns:
-            The parsed data as a dictionary.
-        """
-        # To-Do: Implement LLM call via ADK Agent (or other client) to parse text and return structured data
-        logger.info(f"Stubbed ParserLLM.parse_text called for text: {text[:100]}...")
-        # Example placeholder response structure
-        return {
-            "status": "to-do", 
-            "message": "LLM parsing not implemented in ParserLLM", 
-            "parsed_data": {}
-        }
+# ---------------------------------------------------------------------------
+# Document text extraction helpers
+# ---------------------------------------------------------------------------
 
 
 class DocumentParser:
-    """Base class for document parsers, providing text extraction utilities."""
+    """Base class providing static text-extraction utilities."""
 
     @staticmethod
     def extract_text_from_pdf(file_content: bytes) -> str:
-        """Extract text from a PDF file.
-
-        Args:
-            file_content: The PDF file content as bytes.
-
-        Returns:
-            The extracted text.
-        """
-        # To-Do: Implement robust PDF text extraction logic, potentially using PyPDF2 for direct extraction
-        # and falling back to OCR if needed (or as a primary method if preferred).
-        logger.info("Stubbed DocumentParser.extract_text_from_pdf called.")
-        # Basic PyPDF2 implementation attempt (will be stubbed due to To-Do)
-        text = ""
+        """Extract text from a PDF file using PyPDF2, with OCR fallback."""
         try:
+            import PyPDF2
+
+            text = ""
             pdf_reader = PyPDF2.PdfReader(io.BytesIO(file_content))
-            for page_num in range(len(pdf_reader.pages)):
-                text += pdf_reader.pages[page_num].extract_text()
-            if not text.strip(): # If no text extracted, suggest OCR
-                text = "(No text directly extracted, consider OCR)"
-        except Exception as e:
-            logger.error(f"Error extracting text from PDF: {e}")
-            text = "(Error during PDF text extraction)"
-        return text if text.strip() else "Text to be extracted from PDF (stub)."
+            for page in pdf_reader.pages:
+                page_text = page.extract_text() or ""
+                text += page_text
+            if text.strip():
+                return text
+            # Fall through to OCR if no text was extracted
+            logger.info("PyPDF2 extracted no text; falling back to OCR.")
+        except ImportError:
+            logger.warning("PyPDF2 not installed; falling back to OCR.")
+        except Exception as exc:
+            logger.error(f"PyPDF2 error: {exc}; falling back to OCR.")
+
+        return DocumentParser.extract_text_using_ocr(file_content, is_pdf=True)
 
     @staticmethod
     def extract_text_from_docx(file_content: bytes) -> str:
-        """Extract text from a DOCX file.
-
-        Args:
-            file_content: The DOCX file content as bytes.
-
-        Returns:
-            The extracted text.
-        """
-        # To-Do: Implement DOCX text extraction logic using python-docx
-        logger.info("Stubbed DocumentParser.extract_text_from_docx called.")
+        """Extract text from a DOCX file using python-docx."""
         try:
+            import docx
+
             doc = docx.Document(io.BytesIO(file_content))
-            full_text = []
-            for para in doc.paragraphs:
-                full_text.append(para.text)
-            return "\n".join(full_text) if full_text else "Text to be extracted from DOCX (stub)."
-        except Exception as e:
-            logger.error(f"Error extracting text from DOCX: {e}")
-            return "(Error during DOCX text extraction)"
+            paragraphs = [para.text for para in doc.paragraphs if para.text.strip()]
+            return "\n".join(paragraphs)
+        except ImportError:
+            logger.error("python-docx is not installed.")
+            return ""
+        except Exception as exc:
+            logger.error(f"DOCX extraction error: {exc}")
+            return ""
 
     @staticmethod
     def extract_text_using_ocr(file_content: bytes, is_pdf: bool = True) -> str:
-        """Extract text from a document (typically PDF or image) using OCR.
-        
-        Args:
-            file_content: The document file content as bytes.
-            is_pdf: Flag indicating if the content is PDF (requires conversion to images first).
-            
-        Returns:
-            The extracted text.
-        """
-        # To-Do: Implement OCR text extraction logic using Tesseract via pytesseract.
-        # Ensure Poppler (for pdf2image on Windows) and Tesseract are installed and in PATH.
-        logger.info("Stubbed DocumentParser.extract_text_using_ocr called.")
-        text = ""
+        """Extract text from a document using Tesseract OCR via pytesseract."""
         try:
+            import pytesseract
+            from PIL import Image
+
+            images = []
             if is_pdf:
-                images = convert_from_bytes(file_content) # Requires Poppler
-            else: # Assuming file_content is already an image if not PDF
+                try:
+                    from pdf2image import convert_from_bytes
+                    images = convert_from_bytes(file_content)
+                except ImportError:
+                    logger.error("pdf2image is not installed; cannot do OCR on PDF.")
+                    return ""
+                except Exception as exc:
+                    logger.error(f"pdf2image error: {exc}")
+                    return ""
+            else:
                 images = [Image.open(io.BytesIO(file_content))]
-            
-            for i, image in enumerate(images):
-                # Save the image to a temporary file to pass to Tesseract if direct bytes not working well
-                with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp_image_file:
-                    image.save(tmp_image_file.name, format="PNG")
+
+            text_parts = []
+            for image in images:
+                with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp:
+                    image.save(tmp.name, format="PNG")
                     try:
-                        text += pytesseract.image_to_string(Image.open(tmp_image_file.name)) + "\n"
+                        text_parts.append(pytesseract.image_to_string(Image.open(tmp.name)))
                     finally:
-                        os.remove(tmp_image_file.name) # Clean up temp file
-            if not text.strip():
-                 text = "(No text extracted via OCR)"
-        except Exception as e:
-            logger.error(f"Error during OCR: {e}")
-            text = "(Error during OCR text extraction)"
-        return text if text.strip() else "Text to be extracted using OCR (stub)."
+                        os.remove(tmp.name)
+
+            return "\n".join(text_parts)
+        except ImportError:
+            logger.error("pytesseract/Pillow is not installed; OCR unavailable.")
+            return ""
+        except Exception as exc:
+            logger.error(f"OCR error: {exc}")
+            return ""
+
+
+# ---------------------------------------------------------------------------
+# LLM-based parsers
+# ---------------------------------------------------------------------------
 
 
 class ResumeParser(DocumentParser):
-    """Parser for resume documents."""
-    DEFAULT_RESUME_PROMPT_TEMPLATE_FILE = "resume_parser_prompt.md" # Example, adjust path as needed
+    """Parser for resume documents.
 
-    def __init__(self, llm_client: ParserLLM, prompts_dir: Path = Path("app/prompts")):
-        """Initialize the resume parser.
-        
+    Uses document text extraction + LLM to produce a structured Resume object.
+    """
+
+    def __init__(self, llm_service: Optional[LLMService] = None):
+        """Initialise the parser.
+
         Args:
-            llm_client: An instance of ParserLLM to use for parsing.
-            prompts_dir: Directory where prompt templates are stored.
+            llm_service: An LLMService instance. If None, one is created.
         """
-        logger.info("Stubbed ResumeParser __init__ called.")
-        self.llm_client = llm_client
-        self.prompts_dir = prompts_dir
-        self.resume_prompt_template = self._load_prompt_template(self.DEFAULT_RESUME_PROMPT_TEMPLATE_FILE)
+        self.llm_service = llm_service or LLMService()
+        self._prompt_template = self._load_prompt(RESUME_PROMPT_FILE)
 
-    def _load_prompt_template(self, template_file_name: str) -> str:
-        """Loads a prompt template from a file."""
-        # To-Do: Implement actual file loading
+    # ------------------------------------------------------------------
+    # Internal helpers
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _load_prompt(path: Path) -> str:
+        """Load a prompt template from disk."""
         try:
-            prompt_path = self.prompts_dir / template_file_name
-            # with open(prompt_path, "r") as f: # This will be enabled post-stubbing
-            #     return f.read()
-            logger.info(f"Stubbed: Would load prompt from {prompt_path}")
-            return f"To-Do: Load prompt from {template_file_name}"
+            return path.read_text(encoding="utf-8")
         except FileNotFoundError:
-            logger.error(f"Prompt template file not found: {template_file_name}")
-            return "To-Do: Default fallback prompt if file not found."
+            logger.error(f"Prompt file not found: {path}")
+            return "Extract all information from the following resume and return JSON:"
+
+    def _parse_text_with_llm(self, text: str) -> Dict[str, Any]:
+        """Send extracted text to the LLM and return structured JSON."""
+        prompt = f"{self._prompt_template}\n\n{text}"
+        result = self.llm_service.generate_json(prompt)
+        if not result:
+            logger.warning("LLM returned empty result for resume parsing.")
+        return result
+
+    @staticmethod
+    def _build_resume_from_dict(data: Dict[str, Any], raw_text: str) -> Resume:
+        """Construct a Resume Pydantic object from the LLM-parsed dict."""
+        try:
+            contact_data = data.get("contact") or {}
+            contact = ContactInfo(**contact_data) if contact_data else None
+
+            work_exp = []
+            for item in data.get("work_experience") or []:
+                try:
+                    work_exp.append(WorkExperience(**item))
+                except Exception as exc:
+                    logger.warning(f"Skipping invalid work experience entry: {exc}")
+
+            education = []
+            for item in data.get("education") or []:
+                try:
+                    education.append(Education(**item))
+                except Exception as exc:
+                    logger.warning(f"Skipping invalid education entry: {exc}")
+
+            skills = []
+            for item in data.get("skills") or []:
+                if isinstance(item, str):
+                    skills.append(Skill(name=item))
+                elif isinstance(item, dict):
+                    try:
+                        skills.append(Skill(**item))
+                    except Exception as exc:
+                        logger.warning(f"Skipping invalid skill entry: {exc}")
+
+            projects = []
+            for item in data.get("projects") or []:
+                try:
+                    projects.append(Project(**item))
+                except Exception as exc:
+                    logger.warning(f"Skipping invalid project entry: {exc}")
+
+            certifications = []
+            for item in data.get("certifications") or []:
+                try:
+                    certifications.append(Certification(**item))
+                except Exception as exc:
+                    logger.warning(f"Skipping invalid certification entry: {exc}")
+
+            return Resume(
+                contact=contact,
+                summary=data.get("summary"),
+                objective=data.get("objective"),
+                work_experience=work_exp,
+                education=education,
+                skills=skills,
+                projects=projects,
+                certifications=certifications,
+                languages=data.get("languages") or [],
+                awards=data.get("awards") or [],
+                publications=data.get("publications") or [],
+                raw_text=raw_text,
+            )
+        except Exception as exc:
+            logger.error(f"Failed to build Resume from dict: {exc}")
+            return Resume(raw_text=raw_text)
+
+    # ------------------------------------------------------------------
+    # Public API
+    # ------------------------------------------------------------------
 
     async def parse_resume_file_content(self, file_content: bytes, filename: str) -> Resume:
-        """Parse resume content from bytes.
+        """Parse resume from file bytes.
+
+        Extracts text according to file type, then invokes the LLM to
+        structure the result into a Resume object.
 
         Args:
-            file_content: The resume file content as bytes.
-            filename: The original name of the file, used to determine type.
+            file_content: Raw file bytes.
+            filename: Original filename (used to infer file type).
 
         Returns:
-            A Resume object with the parsed data.
+            A populated Resume instance.
         """
-        logger.info(f"ResumeParser.parse_resume_file_content called for file: {filename}")
+        ext = Path(filename).suffix.lower()
         text = ""
-        file_ext = Path(filename).suffix.lower()
 
-        if file_ext == ".pdf":
-            text = self.extract_text_from_pdf(file_content) # Try direct extraction first
-            if "(No text directly extracted" in text or "(Error during PDF text extraction)" in text or not text.strip():
-                logger.info(f"Direct PDF extraction yielded little/no text for {filename}, trying OCR.")
-                text = self.extract_text_using_ocr(file_content, is_pdf=True)
-        elif file_ext == ".docx":
+        if ext == ".pdf":
+            text = self.extract_text_from_pdf(file_content)
+        elif ext == ".docx":
             text = self.extract_text_from_docx(file_content)
-        elif file_ext in [".txt", ".md"]:
+        elif ext in {".txt", ".md"}:
             try:
-                text = file_content.decode('utf-8')
+                text = file_content.decode("utf-8")
             except UnicodeDecodeError:
-                text = file_content.decode('latin-1', errors='replace')
-        elif file_ext in [".png", ".jpg", ".jpeg"]:
-             text = self.extract_text_using_ocr(file_content, is_pdf=False)
+                text = file_content.decode("latin-1", errors="replace")
+        elif ext in {".png", ".jpg", ".jpeg"}:
+            text = self.extract_text_using_ocr(file_content, is_pdf=False)
         else:
-            logger.warning(f"Unsupported file type for resume: {filename}")
-            # Return a stubbed Resume object with an error or indication
-            return Resume(summary=f"Unsupported file type: {file_ext}")
+            logger.warning(f"Unsupported file type: {ext}")
+            return Resume(summary=f"Unsupported file type: {ext}")
 
-        if not text.strip() or "(Error during" in text or "(No text extracted" in text:
-            logger.warning(f"Could not extract usable text from {filename}.")
-            return Resume(summary=f"Failed to extract text from document: {filename}")
+        if not text.strip():
+            logger.warning(f"No text extracted from {filename}.")
+            return Resume(summary=f"Could not extract text from {filename}.", raw_text="")
 
-        # To-Do: Implement actual parsing with LLM client
-        # parsed_data = self.llm_client.parse_text(text, self.resume_prompt_template)
-        logger.info("Stubbed: LLM parsing step skipped in ResumeParser.parse_resume_file_content.")
-        # For now, return a stubbed Resume object, possibly populating a field with raw text for testing
-        return Resume(summary="Resume parsing to be implemented.", raw_text=text[:2000]) # Truncate raw_text if needed
+        logger.info(f"Extracted {len(text)} characters from {filename}. Sending to LLM…")
+        parsed_data = self._parse_text_with_llm(text)
+
+        if parsed_data:
+            resume = self._build_resume_from_dict(parsed_data, raw_text=text)
+        else:
+            logger.warning("LLM parsing failed; returning resume with raw text only.")
+            resume = Resume(raw_text=text)
+
+        return resume
 
 
 class JobParser(DocumentParser):
-    """Parser for job description documents/text."""
-    DEFAULT_JOB_PROMPT_TEMPLATE_FILE = "job_parser_prompt.md"
+    """Parser for job description text.
 
-    def __init__(self, llm_client: ParserLLM, prompts_dir: Path = Path("app/prompts")):
-        """Initialize the job parser.
-        
+    Uses the LLM to parse a job description string into a structured JobPosting.
+    """
+
+    def __init__(self, llm_service: Optional[LLMService] = None):
+        """Initialise the parser.
+
         Args:
-            llm_client: An instance of ParserLLM to use for parsing.
-            prompts_dir: Directory where prompt templates are stored.
+            llm_service: An LLMService instance. If None, one is created.
         """
-        logger.info("Stubbed JobParser __init__ called.")
-        self.llm_client = llm_client
-        self.prompts_dir = prompts_dir
-        self.job_prompt_template = self._load_prompt_template(self.DEFAULT_JOB_PROMPT_TEMPLATE_FILE)
+        self.llm_service = llm_service or LLMService()
+        self._prompt_template = self._load_prompt(JOB_PROMPT_FILE)
 
-    def _load_prompt_template(self, template_file_name: str) -> str:
-        """Loads a prompt template from a file."""
-        # To-Do: Implement actual file loading
+    @staticmethod
+    def _load_prompt(path: Path) -> str:
+        """Load a prompt template from disk."""
         try:
-            prompt_path = self.prompts_dir / template_file_name
-            # with open(prompt_path, "r") as f: # This will be enabled post-stubbing
-            #     return f.read()
-            logger.info(f"Stubbed: Would load prompt from {prompt_path}")
-            return f"To-Do: Load prompt from {template_file_name}"
+            return path.read_text(encoding="utf-8")
         except FileNotFoundError:
-            logger.error(f"Prompt template file not found: {template_file_name}")
-            return "To-Do: Default fallback prompt if file not found."
+            logger.error(f"Prompt file not found: {path}")
+            return "Extract all information from the following job description and return JSON:"
+
+    def _parse_text_with_llm(self, text: str) -> Dict[str, Any]:
+        """Send job description text to the LLM and return structured JSON."""
+        prompt = f"{self._prompt_template}\n\n{text}"
+        result = self.llm_service.generate_json(prompt)
+        if not result:
+            logger.warning("LLM returned empty result for job parsing.")
+        return result
+
+    @staticmethod
+    def _build_job_posting_from_dict(data: Dict[str, Any], raw_text: str) -> JobPosting:
+        """Construct a JobPosting Pydantic object from the LLM-parsed dict."""
+        try:
+            company_data = data.get("company") or {}
+            company = CompanyInfo(**company_data) if company_data else None
+
+            requirements = []
+            for item in data.get("requirements") or []:
+                if isinstance(item, str):
+                    requirements.append(Requirement(description=item))
+                elif isinstance(item, dict):
+                    try:
+                        requirements.append(Requirement(**item))
+                    except Exception as exc:
+                        logger.warning(f"Skipping invalid requirement: {exc}")
+
+            responsibilities = []
+            for item in data.get("responsibilities") or []:
+                if isinstance(item, str):
+                    responsibilities.append(Responsibility(description=item))
+                elif isinstance(item, dict):
+                    try:
+                        responsibilities.append(Responsibility(**item))
+                    except Exception as exc:
+                        logger.warning(f"Skipping invalid responsibility: {exc}")
+
+            benefits = []
+            for item in data.get("benefits") or []:
+                if isinstance(item, str):
+                    benefits.append(Benefit(description=item))
+                elif isinstance(item, dict):
+                    try:
+                        benefits.append(Benefit(**item))
+                    except Exception as exc:
+                        logger.warning(f"Skipping invalid benefit: {exc}")
+
+            return JobPosting(
+                title=data.get("title"),
+                company=company,
+                location=data.get("location"),
+                remote_type=data.get("remote_type"),
+                employment_type=data.get("employment_type"),
+                experience_level=data.get("experience_level"),
+                salary_range=data.get("salary_range"),
+                description=data.get("description"),
+                requirements=requirements,
+                responsibilities=responsibilities,
+                benefits=benefits,
+                required_skills=data.get("required_skills") or [],
+                preferred_skills=data.get("preferred_skills") or [],
+                keywords=data.get("keywords") or [],
+                raw_text=raw_text,
+            )
+        except Exception as exc:
+            logger.error(f"Failed to build JobPosting from dict: {exc}")
+            return JobPosting(raw_text=raw_text)
 
     def parse_job_text(self, job_text: str) -> JobPosting:
-        """Parse a job description text.
+        """Parse a raw job description string.
 
         Args:
-            job_text: The job description text.
+            job_text: The full job description as plain text.
 
         Returns:
-            A JobPosting object with the parsed data.
+            A populated JobPosting instance.
         """
-        logger.info(f"JobParser.parse_job_text called for text: {job_text[:100]}...")
         if not job_text.strip():
-            logger.warning("Job description text is empty.")
-            return JobPosting(title="Empty job description provided.")
+            logger.warning("Empty job description provided.")
+            return JobPosting(title="(Empty job description)")
 
-        # To-Do: Implement actual parsing with LLM client
-        # parsed_data = self.llm_client.parse_text(job_text, self.job_prompt_template)
-        logger.info("Stubbed: LLM parsing step skipped in JobParser.parse_job_text.")
-        # For now, return a stubbed JobPosting object
-        return JobPosting(title="Job parsing to be implemented.", description=job_text[:1000]) # Truncate desc if needed
+        logger.info(f"Parsing job description ({len(job_text)} chars)…")
+        parsed_data = self._parse_text_with_llm(job_text)
+
+        if parsed_data:
+            return self._build_job_posting_from_dict(parsed_data, raw_text=job_text)
+        else:
+            logger.warning("LLM parsing failed; returning job posting with raw text only.")
+            return JobPosting(raw_text=job_text)
