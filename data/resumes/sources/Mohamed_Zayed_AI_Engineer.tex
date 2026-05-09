@@ -1,0 +1,123 @@
+\documentclass[10pt, letterpaper]{extarticle}
+
+\usepackage[left=0.5in, right=0.5in, top=0.35in, bottom=0.35in]{geometry}
+\usepackage{latexsym}
+\usepackage{titlesec}
+\usepackage[usenames,dvipsnames]{color}
+\usepackage{enumitem}
+\usepackage[hidelinks]{hyperref}
+\usepackage{fancyhdr}
+\usepackage[english]{babel}
+\usepackage{tabularx}
+
+\linespread{1.02}
+\setlist[itemize]{itemsep=1.2pt, topsep=0.5pt, partopsep=0pt, parsep=0.5pt, leftmargin=0.12in}
+
+\pagestyle{fancy}
+\fancyhf{}
+\fancyfoot{}
+\renewcommand{\headrulewidth}{0pt}
+\renewcommand{\footrulewidth}{0pt}
+
+\urlstyle{same}
+\raggedbottom
+\raggedright
+\setlength{\tabcolsep}{0in}
+
+\titleformat{\section}{\vspace{4pt}\bfseries\raggedright\normalsize}{}{0em}{}[\color{black}\titlerule \vspace{2pt}]
+\titlespacing*{\section}{0pt}{4pt}{2pt}
+
+\newcommand{\resumeItem}[1]{\item{#1}}
+
+\newcommand{\resumeSubheading}[4]{
+  \item
+    \begin{tabular*}{1.0\textwidth}[t]{l@{\extracolsep{\fill}}r}
+      \textbf{#1} & \textit{#4} \\
+      \textit{#3} & #2 \\
+    \end{tabular*}\vspace{1pt}
+}
+
+\newcommand{\resumeProjectHeading}[2]{
+    \item
+    \begin{tabular*}{1.0\textwidth}[t]{l@{\extracolsep{\fill}}r}
+       \textbf{#1} & \textit{#2} \\
+    \end{tabular*}\vspace{1pt}
+}
+
+\begin{document}
+
+\begin{center}
+    \textbf{\Large Mohamed Zayed Ahmed} \\
+    \vspace{2pt}
+    \small{+20 128 490 7633 \quad | \quad moh.z.ahmed007@gmail.com \quad | \quad linkedin.com/in/mozayed007 \quad | \quad github.com/mozayed007}
+\end{center}
+
+\section{Professional Summary}
+AI Research Engineer with 3+ years building **production-grade multi-tenant AI platforms** and **agentic systems**. Delivered scalable RAG architectures (Qdrant/HelixDB), high-throughput ML pipelines (3× gains), and LLM evaluation frameworks at Sprints AI and Dark Entry. Strong blend of research (T5 SoTA) and production engineering.
+
+\section{Experience}
+
+\begin{itemize}[label={}, leftmargin=0in]
+
+    \resumeSubheading{Sprints AI}{Sep 2025 – Present}{Research Engineer - R\&D}{Cairo, EG}
+    \begin{itemize}[label={--}]
+      \resumeItem{Architected multi-tenant AI Learning Companion with production FastAPI, Supabase, Qdrant/HelixDB hybrid RAG, and Redis state management.}
+      \resumeItem{Built precision content-ingestion pipeline and production agent workflows with persona orchestration and curriculum-aware retrieval.}
+      \resumeItem{Implemented neuroscience-inspired memory systems and dual RAG provider adapters with zero-downtime switching (50\% fewer DB round-trips).}
+    \end{itemize}
+
+    \resumeSubheading{Dark Entry}{Jun 2025 – Dec 2025}{Research Engineer (Contractor)}{Remote}
+    \begin{itemize}[label={--}]
+      \resumeItem{Architected high-throughput ingestion platforms (50+ concurrent feeds) achieving 3× throughput with dual Python/Rust engine.}
+      \resumeItem{Reduced manual intervention by 80\% and database queries by 70\% through self-healing systems and modular FastAPI refactoring.}
+    \end{itemize}
+
+    \resumeSubheading{Freelance Consulting \& Contracts}{Sep 2023 – Present}{ML/AI Engineer - Consultant}{Remote}
+    \begin{itemize}[label={--}]
+      \resumeItem{Architected multi-agent research frameworks (MCP) and autonomous NER pipelines with active learning + responsible AI guardrails.}
+      \resumeItem{Built LLM evaluation system (3× faster) and pharmaceutical optimization frameworks using GP, BART, and CVAE.}
+    \end{itemize}
+
+    \resumeSubheading{Proteinea}{Aug 2022 – Nov 2022}{Deep Learning Intern}{Cairo, EG}
+    \begin{itemize}[label={--}]
+      \resumeItem{Developed T5 models for antigen-antibody interactions; thesis later surpassed 2022 SoTA on SABDAB dataset.}
+    \end{itemize}
+
+\end{itemize}
+
+\section{Projects}
+
+\begin{itemize}[label={}, leftmargin=0in]
+
+ \resumeProjectHeading{Multi-Agent Research System -- Google ADK, FastAPI, Gradio}{}
+ \begin{itemize}[label={--}]
+   \resumeItem{SequentialAgent pipeline with external API integration (BraveSearch, ArXiv, Wikipedia) and SQLite persistence for autonomous research workflows.}
+   \resumeItem{Designed scalable architecture with modular agents and clear communication patterns for production deployment.}
+ \end{itemize}
+
+ \resumeProjectHeading{Media Recommendation System -- Milvus, PyTorch, LitServe}{}
+ \begin{itemize}[label={--}]
+   \resumeItem{Built ETL pipeline + semantic similarity engine using embeddings and vector DB (Milvus) for context-aware recommendations.}
+   \resumeItem{Combined classical content-based filtering with NLP-powered synopsis analysis for improved relevance.}
+ \end{itemize}
+
+ \resumeProjectHeading{Antigen-Antibody Translation/Generation -- PyTorch, T5, AWS}{Graduation Research Thesis}
+ \begin{itemize}[label={--}]
+   \resumeItem{Custom T5 Transformer achieving 10\% higher performance than 2022 SoTA on SABDAB using AWS NVIDIA A10G GPUs.}
+ \end{itemize}
+
+\end{itemize}
+
+\section{Skills}
+
+\textbf{Programming}: Python, Rust, C++, SQL \quad | \quad 
+\textbf{AI/ML}: PyTorch, FastAPI, Triton, Hugging Face, RAG, Multi-Agent Systems, LLM Evaluation, Vector DBs (Qdrant, Milvus) \\
+\textbf{Infra \& MLOps}: Docker, AWS, GCP, Redis, Prometheus, OpenTelemetry \quad | \quad 
+\textbf{Other}: Git, Linux, PostgreSQL, Jupyter
+
+\section{Education}
+
+\textbf{University of Science and Technology -- Zewail City} \hfill \textit{Giza, EG | Jun 2024} \\
+Bachelor of Science, Communication and Information Engineering \quad | \quad Concentration: ML, NLP, Computer Vision
+
+\end{document}

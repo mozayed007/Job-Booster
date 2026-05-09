@@ -1,50 +1,65 @@
-"""Core LLM service for Job_Booster application.
+"""Core LLM service for direct text generation via LiteLLM.
 
-This module handles interactions with the Large Language Model (e.g., Google Gemini)
-for tasks like parsing, analysis, and content generation.
+For structured output / typed agents, use create_agent() from model_registry instead.
+This service is for raw completion calls (analysis, freeform generation).
 """
 
-import os
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
+import litellm
 from loguru import logger
+from pydantic import BaseModel
 
-# from google.adk.agents import Agent # Placeholder for ADK Agent
-# from google.adk.common import Message # Placeholder for ADK Message
-# from app.core.config import settings # To import API keys etc.
+from app.core.model_registry import get_registry
 
-Agent = None # Placeholder
-Message = None # Placeholder
 
 class LLMService:
-    """Service for interacting with the configured LLM."""
+    """Direct LLM completion service (wraps litellm.acompletion).
+
+    For structured/typed output, use create_agent() from model_registry instead.
+    """
 
     def __init__(self):
-        """Initialize the LLM client (e.g., Google ADK Agent)."""
-        # To-Do: Initialize LLM client using settings.GOOGLE_GEMINI_API_KEY etc.
-        # self.agent = Agent(model=settings.GEMINI_MODEL, api_key=settings.GOOGLE_GEMINI_API_KEY)
-        logger.info("Stubbed LLMService __init__ called.")
-        self.agent = None # Placeholder for the actual agent instance
+        self.registry = get_registry()
+        self.chain = self.registry.resolve_chain()
+        logger.info(f"LLMService: primary={self.chain.primary_model_string}")
 
-    def generate_text(self, prompt: str, context: Optional[Dict[str, Any]] = None) -> str:
-        """Generate text using the LLM based on a prompt and optional context."""
-        # To-Do: Implement text generation logic using self.agent
-        # Example:
-        # if self.agent:
-        #     response = self.agent.generate(prompt=prompt, context=context)
-        #     return response.text
-        logger.info(f"Stubbed LLMService generate_text called with prompt: {prompt[:50]}...")
-        return "To-Do: LLM generated text based on prompt."
+    async def generate(
+        self,
+        prompt: str,
+        system: Optional[str] = None,
+        response_model: Optional[type[BaseModel]] = None,
+    ) -> str:
+        """Generate text with automatic fallback."""
+        messages = []
+        if system:
+            messages.append({"role": "system", "content": system})
+        messages.append({"role": "user", "content": prompt})
 
-    def call_llm_tool(self, tool_name: str, tool_input: Dict[str, Any]) -> Dict[str, Any]:
-        """Invoke a specific tool/function on the LLM if applicable (e.g. ADK tools)."""
-        # To-Do: Implement LLM tool calling logic
-        logger.info(f"Stubbed LLMService call_llm_tool called for tool: {tool_name}")
-        return {"status": "To-Do: Tool executed", "output": {}}
+        all_models = [self.chain.primary_model_string] + self.chain.fallback_model_strings
+        last_error = None
 
-# Example instantiation (primarily for testing or if service is used directly)
-# if settings.GOOGLE_GEMINI_API_KEY:
-#     llm_service = LLMService()
-# else:
-#     logger.warning("LLMService not instantiated: GOOGLE_GEMINI_API_KEY not found.")
-#     llm_service = None # Or a dummy/mock version
+        for model in all_models:
+            try:
+                kwargs: dict[str, Any] = {"model": model, "messages": messages}
+                if response_model:
+                    kwargs["response_format"] = response_model
+                response = await litellm.acompletion(**kwargs)
+                return response.choices[0].message.content
+            except Exception as e:
+                logger.warning(f"Model {model} failed: {e}")
+                last_error = e
+
+        raise RuntimeError(f"All models failed. Last error: {last_error}")
+
+    async def generate_structured(
+        self,
+        prompt: str,
+        system: Optional[str] = None,
+    ) -> str:
+        """Generate text optimized for structured data extraction."""
+        json_system = (
+            (system + "\n\n" if system else "")
+            + "You MUST respond with valid JSON only. No markdown, no explanation, just the JSON object."
+        )
+        return await self.generate(prompt, system=json_system)

@@ -1,55 +1,113 @@
 """Main FastAPI application for Job_Booster."""
 
 import logging
+from contextlib import asynccontextmanager
 from typing import Dict
 
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from loguru import logger
 
+from app.api.analytics_routes import router as analytics_router
+from app.api.auth_routes import router as auth_router
+from app.api.recommendation_routes import router as recommendation_router
+from app.api.resume_routes import router as resume_router
+from app.api.scanner_routes import router as scanner_router
+from app.api.search_routes import router as search_router
+from app.api.tracking_routes import router as tracking_router
 from app.core.config import settings
-# from backend.app.api.routes import api_router # To-Do: Define and import API router
+from app.core.llm_config import init_ai_stack
+from app.services.db_service import initialize_database_tables
 
-# Initialize logging
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Application lifespan — startup and shutdown."""
+    # Startup
+    logger.info("Starting Job_Booster API...")
+    initialize_database_tables()
+    try:
+        init_ai_stack()
+    except Exception as e:
+        logger.warning(f"AI stack init failed (non-fatal): {e}")
+    logger.info("Job_Booster API ready")
+    yield
+    # Shutdown
+    logger.info("Shutting down Job_Booster API")
+
+
 logging.basicConfig(level=logging.INFO)
-logger.info("Initializing Job_Booster API")
 
 app = FastAPI(
     title="Job_Booster API",
-    description="API for tailoring resumes to job descriptions using LLM-powered agents",
-    version="0.1.0",
+    description="AI-powered startup job scanner and resume tailoring platform",
+    version="0.2.0",
     docs_url="/docs",
     redoc_url="/redoc",
+    lifespan=lifespan,
 )
 
-# Configure CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # For development; restrict in production
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Include API routes
-# app.include_router(api_router, prefix="/api") # To-Do: Define and include API router for core functionalities
+app.include_router(scanner_router, prefix="/api")
+app.include_router(resume_router, prefix="/api")
+app.include_router(search_router, prefix="/api")
+app.include_router(auth_router, prefix="/api")
+app.include_router(recommendation_router, prefix="/api")
+app.include_router(tracking_router, prefix="/api")
+app.include_router(analytics_router, prefix="/api")
 
 
 @app.get("/", tags=["Health"])
+async def root() -> Dict[str, str]:
+    """Root endpoint with API info."""
+    return {
+        "name": "Job_Booster API",
+        "version": "0.2.0",
+        "docs": "/docs",
+    }
+
+
+@app.get("/health", tags=["Health"])
 async def health_check() -> Dict[str, str]:
-    """Simple health check endpoint."""
-    # To-Do: Implement health check logic
-    pass
+    """Health check endpoint."""
+    return {"status": "healthy"}
+
+
+@app.get("/health/models", tags=["Health"])
+async def model_health_check():
+    """Check which LLM providers are reachable."""
+    from app.core.model_registry import get_status, health_check
+
+    status = get_status()
+    checks = await health_check()
+    return {
+        "status": "ok",
+        "config": status,
+        "providers": checks,
+    }
+
+
+@app.get("/health/status", tags=["Health"])
+async def model_status():
+    """Get model registry status (sync, no network calls)."""
+    from app.core.model_registry import get_status
+
+    return get_status()
 
 
 if __name__ == "__main__":
     import uvicorn
-    
-    # To-Do: Configure and run the Uvicorn server
-    # uvicorn.run(
-    #     "app.main:app", # Corrected path for uvicorn if run this way
-    #     host=settings.HOST,
-    #     port=settings.PORT,
-    #     reload=settings.DEBUG,
-    # )
-    pass
+
+    uvicorn.run(
+        "app.main:app",
+        host=getattr(settings, "HOST", "0.0.0.0"),
+        port=getattr(settings, "PORT", 8000),
+        reload=getattr(settings, "DEBUG", True),
+    )

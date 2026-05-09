@@ -1,51 +1,85 @@
-# 🧩 Job_Booster: Core Implementation Details (MVP Refactor)
+# 🧩 Job Booster: Core Implementation Details
 
-## 3.1. Core Service Integration (Simplified MVP) ⚙️
+## 3.1. Core Service Integration ⚙️
 
-(Note: The following sections describe the implementation details. Current code provides the foundational structure, with detailed logic being progressively developed.)
+Services are Python modules within `app/services/`, called directly by agents and API handlers:
 
-In the MVP architecture, functionalities previously envisioned as separate MCP servers are integrated as services directly within the main FastAPI application. This simplifies the system by removing inter-process communication overhead for core features.
+* **`app/services/parsing_service.py`**:
+  * `extract_text(file_content, filename)` — dispatcher by file extension
+  * `extract_text_from_pdf()` — LiteParse primary, GLM-OCR fallback for scanned documents
+  * `extract_text_from_docx()` — LiteParse primary, python-docx fallback
+  * `_extract_latex_text()` — regex-based LaTeX command stripping
+  * `ParserLLM` class — Pydantic AI agents for structured extraction (`Resume`, `JobPosting`)
+  * `ResumeParser` / `JobParser` — high-level classes combining extraction + LLM parsing
 
-* **Internal Service Calls:** Agents and API handlers in `app/agents/` and `app/main.py` directly import and call methods from service modules located in `app/services/` (e.g., `parsing_service.py`, `db_service.py`, `llm_service.py`).
-* **Integrated Core Services:** Each service module provides specialized functionality within the single FastAPI application:
-  * `app/services/db_service.py`: Handles all SQLite database operations directly using SQLAlchemy.
-  * `app/services/parsing_service.py`: Contains logic for document parsing and may call an LLM service for understanding content.
-  * `app/services/llm_service.py`: Encapsulates all interactions with the chosen LLM (Google Gemini via ADK).
-* **Configuration:** Application-wide configurations, including database URLs, API keys for external LLMs, etc., are managed centrally, typically loaded from environment variables (`.env` file) and accessed via `app/core/config.py`.
-* **Dependency Management:** All Python dependencies for the application, including those for parsing, database interaction, and LLM SDKs, are managed in a single `requirements.txt` file.
+* **`app/services/db_service.py`**:
+  * `DatabaseService` class with SQLAlchemy session management
+  * Full CRUD: `store_resume`, `store_job_posting`, `store_tailored_resume`, `store_analysis_result`
+  * `get_resume_versions`, `get_active_version` for version management
+  * `initialize_database_tables()` called at app startup via lifespan
 
-## 3.2. Agent Intelligence & Orchestration (Simplified MVP) 🤖🔥
+* **`app/services/llm_service.py`**:
+  * `LLMService` class wrapping LiteLLM
+  * `generate()` — async completion with primary + fallback model
+  * `generate_structured()` — adds JSON formatting instructions
+  * Logfire callbacks configured at LiteLLM level
 
-(Note: The agent workflows and logic described below outline the implementation details being progressively developed.)
+* **`app/services/scraper_service.py`**:
+  * `BaseCareerScraper` ABC with `scrape_careers()` and `scrape_multiple()`
+  * `TinyFishScraper` — cloud API, primary
+  * `Crawl4AIScraper` — local Playwright, optional fallback
+  * `get_scraper()` factory — TinyFish by default, Crawl4AI if `USE_CRAWL4AI=true`
 
-* **Agent = Orchestrator + Reasoning Engine:** The agents in `app/agents/` remain the core intelligence. They decide *when* to call various internal services, *what* data to pass, how to *interpret* the results, and how to *combine* information from multiple sources (e.g., database, LLM responses).
-* **Workflow Example (ResumeTailor Agent in `app/agents/resume_tailor.py`):**
-    1. Receive Trigger (e.g., Job ID, User ID, resume file) from an API endpoint.
-    2. Call `parsing_service.parse_resume(file)` to extract text and structure from the uploaded resume.
-    3. Call `parsing_service.parse_job_description(job_desc_text_or_url)` to get structured job details.
-    4. Call `db_service.store_parsed_resume(...)` and `db_service.store_parsed_job(...)` to save the initial structured data.
-    5. Retrieve relevant user profile information or past successful applications from `db_service`.
-    6. Prepare a detailed prompt for the `llm_service.generate_tailored_text(...)` method, including:
-        * Structured Job Requirements from `parsing_service`.
-        * Structured User Resume data from `parsing_service` and `db_service`.
-        * Instructions to synthesize a tailored resume, emphasizing specific skills/experiences.
-        * Target output structure (potentially guided by Pydantic models like `app/models/resume_model.py` or `app/models/api_models.py`).
-    7. Receive the LLM's response from `llm_service`.
-    8. Validate/parse the LLM response. Handle potential errors (e.g., retry with modified prompt).
-    9. Call `db_service.store_tailored_resume(...)` to save the final output.
-    10. Return the tailored resume content or a success indicator to the API layer.
+## 3.2. Agent Intelligence & Orchestration 🤖🔥
 
-    This workflow occurs through direct Python calls within the single application process.
-* **Handling Multiple Resumes/Complex Profiles:** The agent logic must intelligently merge information if a user has multiple resume versions or extensive history. This might involve:
-  * Prioritizing experiences that directly match job requirements (identified via LLM analysis or keyword matching within the agent).
-  * Using the `llm_service` to synthesize a comprehensive professional summary before tailoring.
-  * Building a unified user profile representation within the agent or using `db_service` to store and retrieve a canonical version.
-* **Prompt Engineering:** Crafting effective prompts for `llm_service` remains critical. Prompts are stored in `app/prompts/` and loaded by the agents or LLM service.
+* **Resume Tailor Agent** (`app/agents/resume_tailor.py`):
+  * Pydantic AI Agent with `TailoredResumeOutput` typed output
+  * `pydantic-graph` workflow: `ParseInput` → `GenerateTailored` → `ValidateOutput`
+  * Graceful fallback to direct agent call if `pydantic-graph` unavailable
+  * System prompt emphasizes truthfulness, keyword optimization, action verbs
 
-## 3.3. Ensuring Observability with Logging/Tracing (Simplified MVP) 🪵📚📡
+* **Startup Scanner Agent** (`app/agents/startup_scanner.py`):
+  * Pydantic AI Agent with `list[JobOpening]` typed output
+  * Scrapes career pages via `get_scraper()`
+  * Extracts jobs with relevance scoring (0.0–1.0)
+  * Batch processing with state persistence (`ScannerState`)
+  * Progress tracking across sessions
 
-* **Instrumentation:**
-  * **Main Application (`app/main.py`):** If using a library like `Logfire` or standard OpenTelemetry, instrument the FastAPI app: `logfire.instrument_fastapi(app)` or equivalent OTel setup. This captures API requests and can trace calls to internal services if they are also instrumented or if auto-instrumentation is effective.
-* **Tracing:** With a single-process application, tracing primarily helps understand the flow and performance of requests through different internal modules (API layer -> agents -> services). Context propagation is handled within the process by the tracing library.
-* **Logging:** Structured logging (e.g., using `loguru` or the standard `logging` module) should be configured centrally (e.g., in `app/core/config.py` or `app/main.py`) to provide detailed operational logs. This helps in debugging and monitoring application behavior.
-* **Goal:** Clear visibility into request handling, agent decision-making, service interactions, and any errors encountered within the application.
+* **Prompt Engineering**: Templates in `app/prompts/` loaded at runtime, providing structured extraction instructions with field specifications.
+
+## 3.3. API Layer 🌐
+
+* **`app/api/resume_routes.py`**:
+  * `POST /api/parse/resume` — upload file → extract → LLM parse → store → return `Resume`
+  * `POST /api/parse/job` — text → LLM parse → store → return `JobPosting`
+  * `POST /api/analyze` — file + job text → parse both → skill matching → return `AnalysisData`
+  * `POST /api/tailor` — file + job text + format → graph workflow → return `TailoredResumeData`
+  * `GET /api/resume-versions` — list stored versions
+  * `GET /api/resume-versions/{id}` — get specific version
+
+* **`app/api/scanner_routes.py`**:
+  * `GET /api/scanner/startups` — list startups with filters
+  * `GET /api/scanner/progress` — scanning progress
+  * `POST /api/scanner/scan/batch` — scan batch synchronously
+  * `POST /api/scanner/scan/background` — scan in background
+  * `GET /api/scanner/jobs/top` — top jobs by relevance
+  * `POST /api/scanner/reset` — reset state
+
+## 3.4. Observability 🪵📚📡
+
+* **Logfire** instrumented at LiteLLM level — success/failure callbacks in `app/core/llm_config.py`
+* `logfire.span()` decorators in agents and services for request tracing
+* **Loguru** for structured logging throughout
+* Logfire auto-instruments FastAPI via `logfire.instrument_fastapi(app)`
+* Tracing provides visibility into request handling, agent decision-making, service interactions, and errors
+
+## 3.5. Document Processing Pipeline 📄⚙️
+
+1. File upload → `extract_text(file_content, filename)` dispatcher
+2. PDF → LiteParse (fast, spatial) → if empty → GLM-OCR (vision, handles scans)
+3. DOCX → LiteParse → if fails → python-docx
+4. LaTeX → regex stripping → plain text
+5. MD / TXT → direct decode
+6. Other formats → LiteParse (handles images, Office, etc.)
+7. Extracted text → Pydantic AI agent → structured `Resume` / `JobPosting` model
+8. Model → SQLite persistence via `DatabaseService`

@@ -1,230 +1,345 @@
 """Core database service for Job_Booster application.
 
-This module handles SQLite database operations, including setup, session management,
-and CRUD operations for various data models.
+Handles SQLite database operations via SQLAlchemy: setup, session management, CRUD.
 """
 
 import os
-import json
-import sqlite3 # Keep for potential direct use, though SQLAlchemy is primary
-from typing import Any, Dict, List, Optional, Union
 from pathlib import Path
+from typing import Any, Dict, List, Optional
 
 from loguru import logger
 from pydantic import BaseModel
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy.orm import Session, sessionmaker
 
-# Attempting to import original model paths, will be updated later
-# These will cause errors until imports are fixed globally
-from app.models.db_models import Base, User, ResumeDB, JobPostingDB, TailoredResumeDB, AnalysisResultDB, create_tables
+from app.models.db_models import (
+    AnalysisResultDB,
+    ApplicationDB,
+    CoverLetterDB,
+    JobPostingDB,
+    ResumeDB,
+    ResumeVersionDB,
+    ScannedJobDB,
+    ScannerStateDB,
+    StartupDB,
+    TailoredResumeDB,
+    User,
+    create_tables,
+)
 
-# --- Database Configuration & Setup ---
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./job_booster.db")
 
+
 def get_configured_engine(db_url: str = DATABASE_URL):
-    """Creates and returns a SQLAlchemy engine based on the DATABASE_URL.
-    Ensures parent directory exists for file-based SQLite databases.
-    """
+    """Creates and returns a SQLAlchemy engine."""
     logger.info(f"Initializing database engine for URL: {db_url}")
-    if db_url.startswith("sqlite") and not db_url == "sqlite:///:memory:":
+    if db_url.startswith("sqlite") and db_url != "sqlite:///:memory:":
         try:
             db_file = Path(db_url.split("sqlite:///", 1)[1])
             db_file.parent.mkdir(parents=True, exist_ok=True)
-            logger.info(f"Ensured database directory exists: {db_file.parent}")
         except Exception as e:
             logger.error(f"Could not create database directory for {db_url}: {e}")
-            # Fallback to in-memory if directory creation fails for a file-based DB
-            logger.warning("Falling back to in-memory SQLite database due to directory error.")
             db_url = "sqlite:///:memory:"
-            
-    engine = create_engine(db_url, connect_args={"check_same_thread": False} if db_url.startswith("sqlite") else {})
-    return engine
+
+    connect_args = {"check_same_thread": False} if db_url.startswith("sqlite") else {}
+    return create_engine(db_url, connect_args=connect_args)
+
 
 engine = get_configured_engine()
-
-# Create session factory
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
+
 def initialize_database_tables():
-    """Creates all tables in the database based on SQLAlchemy models."""
-    logger.info(f"Creating database tables if they don't exist for {engine.url}...")
+    """Creates all tables in the database."""
+    logger.info(f"Creating database tables for {engine.url}...")
     try:
-        # Base.metadata.create_all(bind=engine) # This is what create_tables should do
-        create_tables(engine) # Uses the function imported from app.models.db_models
+        create_tables(engine)
         logger.info("Database tables checked/created successfully.")
     except Exception as e:
         logger.error(f"Error creating database tables: {e}")
 
-# Call at module load time or explicitly from app startup
-# initialize_database_tables() # We'll call this from app.main explicitly
 
-# --- Database Session Management ---
 def get_db_session() -> Session:
-    """Provides a SQLAlchemy database session.
-    
-    It's the responsibility of the caller to close this session.
-    Usage: 
-        db = get_db_session()
-        try:
-            # ... use db ...
-            db.commit()
-        except:
-            db.rollback()
-            raise
-        finally:
-            db.close()
-    """
+    """Provides a SQLAlchemy database session. Caller must close it."""
     return SessionLocal()
 
-# --- Pydantic Models for Service Layer (data validation/DTOs) ---
-# These were originally for FastAPI request validation.
-# They can be reused or adapted for service layer function arguments.
+
+# --- Pydantic DTOs ---
+
 
 class ResumeCreateData(BaseModel):
-    user_id: Optional[str] = None
-    title: Optional[str] = None
-    content: Optional[str] = None # Raw content if not parsed, or tailored content
-    parsed_data: Optional[Dict[str, Any]] = None # Structured data from ResumeParser
+    user_id: Optional[int] = None
+    filename: str = ""
+    parsed_data: Optional[Dict[str, Any]] = None
+    raw_text: Optional[str] = None
+    version_name: Optional[str] = None
     file_path: Optional[str] = None
-    file_type: Optional[str] = None
+    file_format: Optional[str] = None
+
 
 class JobPostingCreateData(BaseModel):
-    user_id: Optional[str] = None
-    title: Optional[str] = None
+    title: str = ""
     company: Optional[str] = None
-    description: Optional[str] = None # Raw job description text
-    parsed_data: Optional[Dict[str, Any]] = None # Structured data from JobParser
+    description: Optional[str] = None
+    parsed_data: Optional[Dict[str, Any]] = None
+    raw_text: Optional[str] = None
+    source_url: Optional[str] = None
+
 
 class TailoredResumeCreateData(BaseModel):
-    user_id: Optional[str] = None
-    original_resume_id: Optional[str] = None # Link to ResumeDB.id
-    job_posting_id: Optional[str] = None   # Link to JobPostingDB.id
-    content: Optional[str] = None # The tailored resume content
-    format: Optional[str] = None # e.g., 'markdown', 'pdf_path'
-    improvements: Optional[Dict[str, Any]] = None # Analysis of improvements
+    resume_id: int
+    job_id: int
+    tailored_content: str = ""
+    match_score: Optional[float] = None
+
 
 class AnalysisResultCreateData(BaseModel):
-    user_id: Optional[str] = None
-    resume_id: Optional[str] = None
-    job_posting_id: Optional[str] = None
-    match_score: Optional[float] = None
-    analysis_data: Optional[Dict[str, Any]] = None # Detailed analysis, suggestions
+    resume_id: int
+    job_id: int
+    analysis_data: Optional[Dict[str, Any]] = None
 
-class QueryServiceRequest(BaseModel):
-    query: str
-    params: Optional[Dict[str, Any]] = None
 
-class DataServiceRequest(BaseModel):
-    table: str # Table name as string, consider using Enum or model class directly
-    data: Dict[str, Any]
-    condition: Optional[Dict[str, Any]] = None # For update/delete operations
+class CoverLetterCreateData(BaseModel):
+    resume_id: Optional[int] = None
+    job_id: Optional[int] = None
+    cover_letter_text: str = ""
+    key_highlights: Optional[list] = None
+    company_name: Optional[str] = None
 
-# --- Database Service Functions (CRUD operations) ---
+
+class ApplicationCreateData(BaseModel):
+    user_id: Optional[int] = None
+    job_id: Optional[int] = None
+    resume_id: Optional[int] = None
+    company_name: str = ""
+    position_title: str = ""
+    status: str = "applied"
+    notes: Optional[str] = None
+
+
+# --- Database Service ---
+
+TABLE_MODEL_MAP = {
+    "users": User,
+    "resumes": ResumeDB,
+    "resume_versions": ResumeVersionDB,
+    "job_postings": JobPostingDB,
+    "tailored_resumes": TailoredResumeDB,
+    "analysis_results": AnalysisResultDB,
+    "cover_letters": CoverLetterDB,
+    "startups": StartupDB,
+    "scanned_jobs": ScannedJobDB,
+    "scanner_state": ScannerStateDB,
+    "applications": ApplicationDB,
+}
+
 
 class DatabaseService:
     def __init__(self, db_session: Session):
         self.db = db_session
 
-    # To-Do: Implement all the following methods using self.db (SQLAlchemy session)
-    # The original code had these as FastAPI endpoints with # To-Do comments.
-    # They are now service methods.
+    def _get_model_by_name(self, table_name: str):
+        return TABLE_MODEL_MAP.get(table_name.lower())
 
-    def execute_raw_query(self, query: str, params: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
-        logger.info(f"Stubbed DatabaseService.execute_raw_query for query: {query}")
-        # Example: result = self.db.execute(text(query), params or {}).fetchall()
-        # return [dict(row) for row in result] # If using SQLAlchemy 2.0 style
-        return [{"status": "to-do", "message": "Raw SQL execution not implemented"}]
+    def store_resume(self, data: ResumeCreateData) -> Optional[int]:
+        """Store a parsed resume and optionally its version."""
+        try:
+            resume_db = ResumeDB(
+                user_id=data.user_id,
+                filename=data.filename,
+                content_json=data.parsed_data,
+                raw_text=data.raw_text,
+            )
+            self.db.add(resume_db)
+            self.db.flush()
 
-    def insert_record(self, table_name: str, data: Dict[str, Any]) -> Optional[Any]:
-        logger.info(f"Stubbed DatabaseService.insert_record into table {table_name}")
-        # To-Do: Map table_name to SQLAlchemy model, create instance, add, commit, return ID.
-        # Example: 
-        #   model_class = self._get_model_by_name(table_name)
-        #   if not model_class: raise ValueError(f"Table {table_name} not found")
-        #   new_record = model_class(**data)
-        #   self.db.add(new_record)
-        #   self.db.commit()
-        #   self.db.refresh(new_record)
-        #   return new_record.id
-        return None # Placeholder for inserted ID
+            if data.version_name and data.file_path:
+                version_db = ResumeVersionDB(
+                    resume_id=resume_db.id,
+                    version_name=data.version_name,
+                    file_path=data.file_path,
+                    file_format=data.file_format or "unknown",
+                    raw_text=data.raw_text,
+                    is_active=True,
+                )
+                self.db.add(version_db)
 
-    def update_records(self, table_name: str, data: Dict[str, Any], condition: Dict[str, Any]) -> int:
-        logger.info(f"Stubbed DatabaseService.update_records for table {table_name}")
-        # To-Do: Map table_name to model, build query with filter, update, commit, return rowcount.
-        return 0 # Placeholder for affected rows
+            self.db.commit()
+            self.db.refresh(resume_db)
+            logger.info(f"Stored resume id={resume_db.id}")
+            return resume_db.id
+        except Exception as e:
+            self.db.rollback()
+            logger.error(f"Error storing resume: {e}")
+            return None
 
-    def delete_records(self, table_name: str, condition: Dict[str, Any]) -> int:
-        logger.info(f"Stubbed DatabaseService.delete_records from table {table_name}")
-        # To-Do: Map table_name to model, build query with filter, delete, commit, return rowcount.
-        return 0 # Placeholder for affected rows
+    def store_job_posting(self, data: JobPostingCreateData) -> Optional[int]:
+        """Store a parsed job posting."""
+        try:
+            job_db = JobPostingDB(
+                title=data.title,
+                company=data.company,
+                content_json=data.parsed_data,
+                raw_text=data.raw_text,
+                source_url=data.source_url,
+            )
+            self.db.add(job_db)
+            self.db.commit()
+            self.db.refresh(job_db)
+            logger.info(f"Stored job posting id={job_db.id}")
+            return job_db.id
+        except Exception as e:
+            self.db.rollback()
+            logger.error(f"Error storing job posting: {e}")
+            return None
+
+    def store_tailored_resume(self, data: TailoredResumeCreateData) -> Optional[int]:
+        """Store a tailored resume."""
+        try:
+            tailored_db = TailoredResumeDB(
+                resume_id=data.resume_id,
+                job_id=data.job_id,
+                tailored_content=data.tailored_content,
+                match_score=data.match_score,
+            )
+            self.db.add(tailored_db)
+            self.db.commit()
+            self.db.refresh(tailored_db)
+            logger.info(f"Stored tailored resume id={tailored_db.id}")
+            return tailored_db.id
+        except Exception as e:
+            self.db.rollback()
+            logger.error(f"Error storing tailored resume: {e}")
+            return None
+
+    def store_analysis_result(self, data: AnalysisResultCreateData) -> Optional[int]:
+        """Store an analysis result."""
+        try:
+            analysis_db = AnalysisResultDB(
+                resume_id=data.resume_id,
+                job_id=data.job_id,
+                analysis_json=data.analysis_data,
+            )
+            self.db.add(analysis_db)
+            self.db.commit()
+            self.db.refresh(analysis_db)
+            logger.info(f"Stored analysis result id={analysis_db.id}")
+            return analysis_db.id
+        except Exception as e:
+            self.db.rollback()
+            logger.error(f"Error storing analysis result: {e}")
+            return None
+
+    def store_cover_letter(self, data: CoverLetterCreateData) -> Optional[int]:
+        """Store a generated cover letter."""
+        try:
+            cl_db = CoverLetterDB(
+                resume_id=data.resume_id,
+                job_id=data.job_id,
+                cover_letter_text=data.cover_letter_text,
+                key_highlights_json=data.key_highlights,
+                company_name=data.company_name,
+            )
+            self.db.add(cl_db)
+            self.db.commit()
+            self.db.refresh(cl_db)
+            logger.info(f"Stored cover letter id={cl_db.id}")
+            return cl_db.id
+        except Exception as e:
+            self.db.rollback()
+            logger.error(f"Error storing cover letter: {e}")
+            return None
+
+    def get_resume_versions(self, resume_id: int) -> List[Dict[str, Any]]:
+        """Get all versions for a resume."""
+        try:
+            versions = (
+                self.db.query(ResumeVersionDB).filter(ResumeVersionDB.resume_id == resume_id).all()
+            )
+            return [
+                {
+                    "id": v.id,
+                    "version_name": v.version_name,
+                    "file_path": v.file_path,
+                    "file_format": v.file_format,
+                    "is_active": v.is_active,
+                    "created_at": str(v.created_at),
+                }
+                for v in versions
+            ]
+        except Exception as e:
+            logger.error(f"Error getting resume versions: {e}")
+            return []
+
+    def get_active_version(self, resume_id: int) -> Optional[Dict[str, Any]]:
+        """Get the active version for a resume."""
+        try:
+            version = (
+                self.db.query(ResumeVersionDB)
+                .filter(
+                    ResumeVersionDB.resume_id == resume_id,
+                    ResumeVersionDB.is_active.is_(True),
+                )
+                .first()
+            )
+            if version:
+                return {
+                    "id": version.id,
+                    "version_name": version.version_name,
+                    "file_path": version.file_path,
+                    "file_format": version.file_format,
+                    "raw_text": version.raw_text,
+                    "created_at": str(version.created_at),
+                }
+            return None
+        except Exception as e:
+            logger.error(f"Error getting active version: {e}")
+            return None
+
+    def insert_record(self, table_name: str, data: Dict[str, Any]) -> Optional[int]:
+        """Insert a record into any table by name."""
+        model_class = self._get_model_by_name(table_name)
+        if not model_class:
+            logger.error(f"Unknown table: {table_name}")
+            return None
+        try:
+            record = model_class(**data)
+            self.db.add(record)
+            self.db.commit()
+            self.db.refresh(record)
+            return record.id
+        except Exception as e:
+            self.db.rollback()
+            logger.error(f"Error inserting into {table_name}: {e}")
+            return None
 
     def query_records(
         self,
         table_name: str,
         limit: int = 100,
         offset: int = 0,
-        columns: Optional[List[str]] = None,
-        filter_conditions: Optional[Dict[str, Any]] = None
+        filter_conditions: Optional[Dict[str, Any]] = None,
     ) -> List[Dict[str, Any]]:
-        logger.info(f"Stubbed DatabaseService.query_records for table {table_name}")
-        # To-Do: Map table_name to model, build query with filters, columns, limit, offset.
-        return [{"status": "to-do", "message": f"Query for {table_name} not implemented"}]
-
-    # --- MCP-specific service methods ---
-    def store_resume(self, resume_data: ResumeCreateData) -> Optional[str]:
-        logger.info(f"Stubbed DatabaseService.store_resume for user: {resume_data.user_id}")
-        # To-Do: Insert into ResumeDB table.
-        # Example: data_to_insert = resume_data.dict()
-        # resume_db_entry = ResumeDB(**data_to_insert) # adapt fields
-        # self.db.add(resume_db_entry)
-        # self.db.commit()
-        # return resume_db_entry.id
-        return "stub_resume_id"
-
-    def store_job_posting(self, job_data: JobPostingCreateData) -> Optional[str]:
-        logger.info(f"Stubbed DatabaseService.store_job_posting for user: {job_data.user_id}")
-        # To-Do: Insert into JobPostingDB table.
-        return "stub_job_id"
-
-    def store_tailored_resume(self, tailored_resume_data: TailoredResumeCreateData) -> Optional[str]:
-        logger.info(f"Stubbed DatabaseService.store_tailored_resume for user: {tailored_resume_data.user_id}")
-        # To-Do: Insert into TailoredResumeDB table.
-        return "stub_tailored_resume_id"
-
-    def store_analysis_result(self, analysis_data: AnalysisResultCreateData) -> Optional[str]:
-        logger.info(f"Stubbed DatabaseService.store_analysis_result for user: {analysis_data.user_id}")
-        # To-Do: Insert into AnalysisResultDB table.
-        return "stub_analysis_id"
-
-    # Helper to map table names to models (optional, can be done explicitly in each method)
-    # def _get_model_by_name(self, table_name: str):
-    #     model_map = {
-    #         "users": User,
-    #         "resumes": ResumeDB,
-    #         "job_postings": JobPostingDB,
-    #         "tailored_resumes": TailoredResumeDB,
-    #         "analysis_results": AnalysisResultDB
-    #     }
-    #     return model_map.get(table_name.lower())
-
-# Example usage (for testing or direct script use, not part of service typically)
-if __name__ == "__main__":
-    logger.info("Database service module direct run (for testing/init purposes).")
-    
-    # This will create tables if initialize_database_tables() is uncommented or called here
-    initialize_database_tables() # Make sure this runs if you test directly
-    logger.info("Database tables initialized (if not already present).")
-
-    # Example: test inserting and querying (requires implemented methods and correct imports)
-    # db_session = get_db_session()
-    # service = DatabaseService(db_session)
-    # try:
-    #     # Test operations here
-    #     # user_id = service.insert_record("users", {"email": "test@example.com", "hashed_password": "abc"})
-    #     # logger.info(f"Inserted user with ID: {user_id}")
-    #     # users = service.query_records("users")
-    #     # logger.info(f"Users: {users}")
-    #     pass
-    # finally:
-    #     db_session.close()
+        """Query records from any table by name."""
+        model_class = self._get_model_by_name(table_name)
+        if not model_class:
+            logger.error(f"Unknown table: {table_name}")
+            return []
+        try:
+            query = self.db.query(model_class)
+            if filter_conditions:
+                for key, value in filter_conditions.items():
+                    if hasattr(model_class, key):
+                        query = query.filter(getattr(model_class, key) == value)
+            records = query.offset(offset).limit(limit).all()
+            result = []
+            for r in records:
+                d = {}
+                for col in r.__table__.columns:
+                    val = getattr(r, col.name)
+                    d[col.name] = str(val) if val is not None else None
+                result.append(d)
+            return result
+        except Exception as e:
+            logger.error(f"Error querying {table_name}: {e}")
+            return []
