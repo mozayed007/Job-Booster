@@ -60,7 +60,20 @@ docs/_build/
 .pytest_cache/
 .coverage
 htmlcov/
+.ruff_cache/
 
 # Local development files
 local_settings.py
 Hackathon_MVP_Plan.md
+scanner_state.json
+
+# Generated output resumes (user-specific, do not commit)
+data/resumes/output/*
+!data/resumes/output/.gitkeep
+
+# Vector DB data (runtime-generated)
+data/qdrant/
+data/chromadb/
+
+# Node
+node_modules/

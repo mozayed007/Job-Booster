@@ -1,0 +1,17 @@
+.git
+__pycache__
+.env
+*.db
+.pytest_cache
+.ruff_cache
+data/qdrant/
+outputs/
+node_modules/
+*.pyc
+*.pyo
+.mypy_cache
+.kilo
+tests/
+*.md
+LICENSE
+.gitignore

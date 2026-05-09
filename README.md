@@ -1,198 +1,190 @@
-# 🚀 Job_Booster - Hackathon MVP (Refactored)
+# Job_Booster
 
-[![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-blue)] [![FastAPI](https://img.shields.io/badge/fastapi-%3E%3D0.100-green)] [![Google ADK](https://img.shields.io/badge/google--adk-0.4.0-orange)] [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)]
+[![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue)](https://www.python.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.115%2B-green)](https://fastapi.tiangolo.com/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![CI](https://github.com/mozayed007/Job-Booster/actions/workflows/ci.yml/badge.svg)](https://github.com/mozayed007/Job-Booster/actions/workflows/ci.yml)
 
-## Table of Contents
-
-- [Overview](#overview)
-- [Features](#features)
-- [Architecture (MVP)](#architecture-mvp)
-- [Tech Stack (MVP)](#tech-stack-mvp)
-- [Getting Started](#getting-started)
-- [Usage](#usage)
-- [Project Structure](#project-structure)
-- [Contributing](#contributing)
-- [License](#license)
-
-## Overview
-
-Job_Booster aims to automate and significantly enhance the job application process by intelligently leveraging a user's entire work history. For the Hackathon MVP, it focuses on parsing resumes and job descriptions, and leveraging AI to tailor application materials.
-
-This MVP is built as a **single, integrated FastAPI application with a Gradio UI** using **Google ADK with Google Gemini** for its AI capabilities. Note that the current code provides the foundational structure, with detailed logic being progressively developed during the hackathon.
+AI-powered resume tailoring, startup job scanning, and application tracking platform. v1.0.0 — all 12 phases complete.
 
 ## Features
 
-(All features are being progressively developed)
+| Phase | Feature | Description |
+|---|---|---|
+| 1 | Multi-format Resume Parsing | PDF, DOCX, MD, TXT, LaTeX via LiteParse; scanned documents via GLM-OCR |
+| 2 | AI Structured Extraction | Pydantic AI agents produce type-safe, validated Pydantic models from parsed text |
+| 3 | Job Description Parsing | Extract structured requirements, skills, and metadata from job postings |
+| 4 | Resume-Job Match Analysis | Skill matching, gap identification, match scoring, and actionable suggestions |
+| 5 | AI Resume Tailoring | Graph-based workflows via pydantic-graph generate targeted resumes |
+| 6 | Startup Career Page Scraping | TinyFish and Crawl4AI scrape startup career pages with batch processing |
+| 7 | Multi-provider LLM Support | 100+ models via LiteLLM with automatic fallback chains |
+| 8 | Resume Versioning | Track multiple file versions per resume with database-backed storage |
+| 9 | Cover Letter Generation | AI-generated cover letters with key highlights extraction |
+| 10 | Vector Semantic Search | Qdrant-based hybrid search (vector similarity + keyword matching) |
+| 11 | Application Tracking | Full CRUD with status lifecycle and statistics dashboard |
+| 12 | Analytics Dashboard | Resume stats, job stats, skill trends, scanner metrics |
 
-- **Intelligent Document Parsing**: Extracts structured data from resumes (PDF, DOCX, TXT) and job descriptions using `app/services/parsing_service.py`.
-- **AI-Powered Content Generation**: Utilizes Google Gemini via Google ADK (managed by `app/services/llm_service.py`) for tasks like resume tailoring and analysis.
-- **Data Persistence**: Stores and retrieves parsed and generated data using an SQLite database, managed by `app/services/db_service.py`.
-- **Vector Similarity**: Performs vector similarity search using vector indexes stored as files or within SQLite for quantitative match scoring.
-- **Web Interface**: A simple Gradio UI (`app/frontend.py`) for user interaction.
-
-## Architecture (MVP)
-
-The Job_Booster MVP is a single FastAPI application that integrates all core functionalities:
-
-```mermaid
-graph TD
-    A["User via Gradio UI (app/frontend.py)"] --> B["Job_Booster FastAPI App (app/main.py)"];
-    
-    subgraph B [FastAPI Application]
-        direction LR
-        B_API["API Endpoints (app/main.py)"] --> B_Agents["Agents (app/agents)"];
-        B_Agents --> B_Parsing["Parsing Service (app/services/parsing_service.py)"];
-        B_Agents --> B_DB["DB Service (app/services/db_service.py)"];
-        B_Agents --> B_LLM["LLM Service (app/services/llm_service.py)"];
-    end
-
-    B_LLM --> C["Google Gemini API (via ADK)"];
-    C --> B_LLM;
-    B_DB --> D["SQLite DB File (job_booster.db)"];
-    D --> B_DB;
-    B --> A; 
-
-    style A fill:#8F00FF,stroke:#555,stroke-width:2px
-    style B fill:#0077B6,stroke:#555,stroke-width:2px
-    style C fill:#34A853,stroke:#555,stroke-width:2px
-    style D fill:#2E8B57,stroke:#555,stroke-width:2px
-```
-
-Key components reside within the `app/` directory as detailed in section 2.1 of the Architecture document:
-- `app/main.py`: The main FastAPI application, routing, and startup logic.
-- `app/services/`: Contains `parsing_service.py`, `db_service.py`, and `llm_service.py`.
-- `app/agents/`: Houses the agentic logic (e.g., `resume_tailor.py`).
-- `app/models/`: Pydantic and SQLAlchemy models.
-- `app/frontend.py`: Gradio user interface.
-
-## Tech Stack (MVP)
-
-- **Backend**: Python 3.9+, FastAPI
-- **AI/LLM**: Google Gemini via Google ADK
-- **Frontend**: Gradio
-- **Database**: SQLite (with SQLAlchemy ORM)
-- **Parsing**: PyPDF2, python-docx, pytesseract (for OCR), Pillow, pdf2image
-- **Configuration**: Pydantic, python-dotenv
-- **Logging**: Loguru
-
-## Getting Started
-
-### Prerequisites
-
-- Python 3.9+
-- Google Gemini API Key (obtainable from Google AI Studio or Google Cloud Console).
-- (Optional) Virtual environment (`venv` or `conda`) for isolation.
-- For PDF OCR: Tesseract OCR and Poppler utilities must be installed and in your system's PATH (see `3 - Implementation Details.md` for setup notes).
-
-### Installation
+## Quick Start
 
 ```bash
-# Clone the repo
+# Clone
 git clone https://github.com/mozayed007/Job-Booster.git
 cd Job-Booster
 
-# Create virtual environment & install dependencies
+# Create environment
 python -m venv .venv
+.venv\Scripts\activate        # Windows
+# source .venv/bin/activate   # macOS/Linux
 
-# On Windows
-.venv\Scripts\activate
+# Install
+pip install -e ".[dev]"
+npm install -g @llamaindex/liteparse
 
-# On macOS/Linux
-source .venv/bin/activate
+# Configure
+cp .env.example .env
+# Edit .env — set at least one API key (OPENAI_API_KEY, ANTHROPIC_API_KEY, or GEMINI_API_KEY)
 
-# Install dependencies
-pip install -r requirements.txt
-
-# Set up environment variables
-# Create a .env file in the project root with your Google Gemini API key:
-echo "GOOGLE_GEMINI_API_KEY='your_api_key_here'" > .env
-# Add other relevant environment variables as needed, e.g.:
-# echo "GEMINI_MODEL='gemini-pro'" >> .env
-echo "DATABASE_URL='sqlite:///./job_booster.db'" >> .env
-echo "DEBUG=True" >> .env
-echo "LOG_LEVEL=INFO" >> .env
+# Run
+python scripts/run_app.py
 ```
 
-### Launch the Application
+- **Gradio UI**: http://localhost:8050
+- **API docs**: http://localhost:8000/docs
+
+## Architecture
+
+Single FastAPI application with internal service layers, Gradio frontend, and SQLite database:
+
+```
+Gradio UI (8050) → FastAPI (8000) → API Routes → AI Agents → Services
+                                                        ↓
+                                          ┌─────────────┼─────────────┐
+                                          ↓             ↓             ↓
+                                    LiteLLM        SQLAlchemy      Qdrant
+                                   (100+ LLMs)     (SQLite)    (vector search)
+```
+
+**Key components:**
+- `app/core/model_registry.py` — Singleton ModelRegistry auto-detects providers, builds fallback chains, provides `create_agent()` factory
+- `app/agents/` — Pydantic AI agents for resume tailoring, cover letters, startup scanning
+- `app/services/` — Business logic: parsing, auth, search, tracking, analytics, export
+- `app/api/` — 7 FastAPI routers: resume, scanner, search, auth, recommendations, tracking, analytics
+
+## Tech Stack
+
+| Layer | Technology |
+|---|---|
+| Backend | FastAPI, Python 3.10+ |
+| Frontend | Gradio |
+| AI Agents | Pydantic AI + pydantic-graph |
+| LLM Router | LiteLLM (100+ providers) |
+| Document Parsing | LiteParse (LlamaIndex) + GLM-OCR |
+| Web Scraping | TinyFish + Crawl4AI |
+| Vector DB | Qdrant (file-based) |
+| Database | SQLAlchemy + SQLite |
+| Auth | bcrypt + JWT (python-jose) |
+| Observability | Logfire |
+| Linting | Ruff |
+
+## API Documentation
+
+Full interactive API documentation is available at:
+
+- **Swagger UI**: http://localhost:8000/docs
+- **ReDoc**: http://localhost:8000/redoc
+
+7 route groups: Resume/Job parsing, Startup Scanner, Search, Auth, Recommendations, Application Tracking, Analytics.
+
+## Testing
 
 ```bash
-# Start the FastAPI application with Uvicorn
-python scripts/run_app.py 
-# Alternatively, run directly: uvicorn app.main:app --reload --port 8000
+# Run all 116 tests
+pytest tests/ -v
+
+# Run specific test file
+pytest tests/test_api.py -v
+
+# Lint
+ruff check .
+ruff format --check .
 ```
 
-This launches the FastAPI backend (default: <http://localhost:8000>) which also serves the Gradio UI (usually at the root `/` or a specific path like `/ui` depending on `app/main.py` configuration).
+Tests run on Python 3.10, 3.11, 3.12 in CI. See `tests/` for test files covering API endpoints, auth, embeddings, vector store, models, scanner, recommendations, tracking, and analytics.
 
-- FastAPI Swagger docs: <http://localhost:8000/docs>
-- Gradio UI: <http://localhost:8000> (or specific path configured)
+## Docker
 
-## Usage
+```bash
+# Build and run
+docker build -t job-booster .
+docker run -p 8000:8000 -p 8050:8050 --env-file .env job-booster
 
-The application provides a Gradio interface, typically accessible via the root URL of the FastAPI server once started. It will guide you through:
+# Or use docker-compose
+docker compose up -d
+```
 
-1. **Uploading/Pasting Resume**: Provide your resume as a file (PDF, DOCX, TXT).
-2. **Pasting Job Description**: Input the job description text.
-3. **Processing**: The backend agents and services will parse the documents, use Google Gemini for analysis and generation, and store results.
-4. **Viewing Results**: The UI will display tailored content, analysis, or feedback.
+Docker Compose mounts `data/` and `outputs/` as volumes. Optional PostgreSQL service available (see `docker-compose.yml`).
 
-### Sample Data
+## Environment Variables
 
-Sample files for testing can be found in the `data/` directory:
+| Variable | Default | Description |
+|---|---|---|
+| `OPENAI_API_KEY` | — | OpenAI API key |
+| `ANTHROPIC_API_KEY` | — | Anthropic API key |
+| `GEMINI_API_KEY` | — | Google Gemini API key |
+| `GROQ_API_KEY` | — | Groq API key |
+| `TOGETHER_API_KEY` | — | Together AI API key |
+| `OPENROUTER_API_KEY` | — | OpenRouter API key |
+| `DEFAULT_MODEL` | auto | Override primary model (`provider:model`) |
+| `FALLBACK_MODEL` | — | Prepend to fallback chain |
+| `PREFER_LOCAL` | `false` | Prefer Ollama/vLLM over cloud |
+| `OLLAMA_BASE_URL` | `http://localhost:11434` | Ollama server URL |
+| `OLLAMA_MODEL` | `llama3.2` | Default Ollama model |
+| `DATABASE_URL` | `sqlite:///./job_booster.db` | Database URL |
+| `TINYFISH_API_KEY` | — | TinyFish API key |
+| `JWT_SECRET_KEY` | random | JWT signing secret |
+| `LOGFIRE_TOKEN` | — | Logfire observability token |
+| `LOG_LEVEL` | `INFO` | Logging level |
 
-- `data/resumes/`
-- `data/jobs/`
+See `.env.example` for the full list with descriptions.
 
 ## Project Structure
 
-```plaintext
+```
 Job_Booster/
-├── app/                      # Main application package
-│   ├── __init__.py
-│   ├── agents/               # Agentic logic (e.g., resume tailoring)
-│   │   ├── __init__.py
-│   │   └── resume_tailor.py
-│   ├── core/                 # Core utilities (e.g., config loading)
-│   │   ├── __init__.py
-│   │   └── config.py
-│   ├── frontend.py           # Gradio UI application
-│   ├── main.py               # FastAPI application entry point, API routers
-│   ├── models/               # Pydantic API models, SQLAlchemy DB models
-│   │   ├── __init__.py
-│   │   ├── api_models.py
-│   │   ├── base_model.py
-│   │   ├── db_models.py
-│   │   ├── job_model.py      # Specific model for job data
-│   │   └── resume_model.py   # Specific model for resume data
-│   ├── prompts/              # LLM prompt templates
-│   │   └── ... 
-│   └── services/             # Business logic services
-│       ├── __init__.py
-│       ├── db_service.py       # Database interactions
-│       ├── llm_service.py      # LLM (Gemini via ADK) interactions
-│       └── parsing_service.py  # Document parsing logic
-├── data/
-│   ├── jobs/
-│   └── resumes/
-├── outputs/                  # Directory for generated outputs (optional)
-├── scripts/                  # Utility scripts (e.g., run_app.py)
-│   └── run_app.py
-├── tests/                    # Test suite
-│   └── ...
-├── 1 - Vision & Goals.md     # Project vision and goals (sections 1.1-1.3)
-├── 2 - Architecture & structures.md # Architecture details (sections 2.1-2.4)
-├── 3 - Implementation Details.md  # Implementation specifics (sections 3.1-3.3)
-├── Hackathon_MVP_Plan.md     # MVP plan (in root)
-├── .env.example              # Example environment file
-├── .gitignore
-├── LICENSE
-├── README.md                 # This file
-└── requirements.txt          # Python dependencies
+├── app/
+│   ├── main.py                 # FastAPI entry point, router mounting
+│   ├── frontend.py             # Gradio UI (6 tabs)
+│   ├── agents/                 # Pydantic AI agents (resume tailor, cover letter, scanner)
+│   ├── api/                    # FastAPI routers (7 route modules)
+│   ├── core/                   # Config, ModelRegistry, LLM setup
+│   ├── middleware/              # JWT auth middleware
+│   ├── models/                 # Pydantic + SQLAlchemy models
+│   ├── prompts/                # LLM prompt templates (Markdown)
+│   ├── services/               # Business logic (15 service modules)
+│   └── ui/                     # Gradio tab components
+├── data/                       # Sample resumes, jobs, startups
+├── docs/                       # Documentation (Vision, Architecture, Implementation)
+├── outputs/                    # Generated output files
+├── scripts/run_app.py          # Launch script (FastAPI + Gradio)
+├── tests/                      # Test suite (116 tests, 10 files)
+├── .github/workflows/          # CI (lint+test+build) and Release (GHCR)
+├── Dockerfile                  # Multi-stage Docker build
+├── docker-compose.yml          # Docker Compose with optional PostgreSQL
+├── pyproject.toml              # Project metadata, dependencies, tool config
+└── .env.example                # Environment variable template
 ```
 
 ## Contributing
 
-Contributions are welcome! Please follow standard Git workflow (fork, branch, PR).
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/my-feature`)
+3. Make changes and add tests
+4. Run lint and tests: `ruff check . && pytest tests/ -v`
+5. Commit with conventional commit messages
+6. Open a pull request against `main`
+
+CI will run lint checks (Ruff) and tests (pytest on Python 3.10/3.11/3.12) automatically on PR.
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+MIT License — see [LICENSE](LICENSE) for details.

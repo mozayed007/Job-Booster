@@ -1,94 +1,131 @@
-# 🏗️ Job_Booster: Detailed Architecture & System Structure (MVP Refactor)
+# 🏗️ Job_Booster: Architecture & System Structure
 
-## 2.1 System Components & Responsibilities (Simplified MVP) 🗺️
+## 2.1 System Components & Responsibilities 🗺️
 
-For the Minimum Viable Product (MVP), the architecture is consolidated into a single FastAPI application. This simplifies deployment and development while retaining a logical separation of concerns internally.
+The application is a single FastAPI backend with modular internal services, a Gradio web frontend, and Pydantic AI agents for intelligent document processing and job scanning.
 
-1. **Job_Booster Application (FastAPI):**
-    * **Role:** The unified application handling all user requests, business logic, data processing, and UI interactions (if Gradio is served via FastAPI).
-    * **Key Internal Modules (within `app/` directory):**
-        * `main.py`: 🚀 FastAPI application entry point, global configurations, startup/shutdown events, and mounting of API routers. May also serve the Gradio UI if integrated.
-        * `frontend.py`: 🎨 Gradio user interface definition and logic (if run as part of the FastAPI app or as a separate process pointing to the API).
-        * `agents/`: 🤖 Contains the core business logic and intelligent processing (e.g., `resume_tailor.py`). This is where complex workflows like parsing orchestration, resume tailoring, and analysis generation are implemented. Logic previously in separate Pydantic-AI agents is now directly integrated here.
-        * `services/`: 🛠️ Provides specialized functionalities previously envisioned as separate MCP servers. These are now Python modules/classes directly called by agents or API handlers.
-            * `parsing_service.py`: Handles text extraction from documents (PDF, DOCX) and uses LLM capabilities for structuring the extracted data.
-            * `db_service.py`: Manages interactions with the SQLite database. Handles data storage, retrieval, and schema management.
-            * `llm_service.py`: Abstracts LLM interactions, using Google ADK for Google Gemini.
-        * `core/`: ⚙️ Handles application-wide concerns like loading configuration (`config.py`), setting up logging, and defining shared utilities or exception handling.
-        * `models/`: 📝 Defines Pydantic models for various purposes:
-            * `api_models.py`: Request/response schemas for the FastAPI endpoints.
-            * `job_model.py`, `resume_model.py`: Core business objects (e.g., `Resume`, `JobPosting` - these were previously in `common/src/common/models/`).
-            * `db_models.py`: SQLAlchemy models for database tables (previously `sqlite_tables.py` in `common`).
-        * `prompts/`: 📄 Stores prompt templates for LLM interactions.
+### Core Modules (within `app/`)
 
-2. **Data Storage:**
-    * **SQLite Database File:** A persistent file (e.g., `job_booster.db`) accessed directly by `app/services/db_service.py` using SQLAlchemy. Stores structured data from parsed documents, user information, etc.
-    * *(For MVP, vector indexes will be stored as files or within SQLite if feasible for scale).*
+| Module | File(s) | Responsibility |
+|--------|---------|----------------|
+| **Entry** | `main.py` | FastAPI app, lifespan events, router mounting, CORS |
+| **Frontend** | `frontend.py` | Gradio 5-tab UI, communicates with API via httpx |
+| **Agents** | `agents/resume_tailor.py` | Pydantic AI agent + pydantic-graph workflow for resume tailoring |
+| | `agents/startup_scanner.py` | Pydantic AI agent for extracting job postings from startup pages |
+| **API** | `api/resume_routes.py` | `POST /parse/resume`, `/parse/job`, `/analyze`, `/tailor` |
+| | `api/scanner_routes.py` | `GET/POST /scanner/*`, `/jobs/top`, `/progress` |
+| **Core** | `core/config.py` | pydantic-settings, environment variable loading |
+| | `core/llm_config.py` | LiteLLM + Logfire configuration |
+| **Models** | `models/base_model.py` | `JobBoosterBase` (UUID PK), `BaseResponse` |
+| | `models/resume_model.py` | `Resume`, `ContactInfo`, `Education`, `WorkExperience`, `Skill` |
+| | `models/job_model.py` | `JobPosting`, `CompanyInfo`, `Requirement`, `Responsibility`, `Benefit` |
+| | `models/api_models.py` | Request/response DTOs for all endpoints |
+| | `models/db_models.py` | SQLAlchemy tables (`ResumeDB`, `JobPostingDB`, `ResumeVersionDB`) |
+| | `models/startup_model.py` | `Startup`, `JobOpening`, `ScannerState` |
+| **Prompts** | `prompts/resume_parser_prompt.md` | Prompt for resume document structuring |
+| | `prompts/job_parser_prompt.md` | Prompt for job posting extraction |
+| **Services** | `services/parsing_service.py` | LiteParse (PDF/DOCX/image) + GLM-OCR + python-docx + LaTeX |
+| | `services/db_service.py` | SQLAlchemy CRUD via `DatabaseService` class |
+| | `services/llm_service.py` | LiteLLM async completion with provider fallback chains |
+| | `services/scraper_service.py` | TinyFish (primary) + Crawl4AI (fallback) scraper factory |
+| | `services/career_scraper.py` | Crawl4AI implementation (backward compatibility) |
+| | `services/startup_parser.py` | Markdown parser for `startups.md` database |
+| **UI** | `ui/scanner_tab.py` | Gradio scanner tab component |
 
-## 2.2 Communication Flow & Protocols (Simplified MVP) ↔️
+### Data Storage
 
-* **User Interaction:** Standard HTTPS requests to the FastAPI application's API endpoints.
-* **Internal Communication:** Direct Python function/method calls between components within the `app` module. For instance:
-  * An API handler in `app/main.py` (or a router) might call a method in an agent in `app/agents/resume_tailor.py`.
-  * The agent would then call methods in `app/services/parsing_service.py` to get data, `app/services/llm_service.py` for AI processing, and `app/services/db_service.py` to store/retrieve results.
-* **Direct Function Calls for Core MVP Features:** Core functionalities are implemented as internal Python modules/classes, allowing direct function calls between components.
-* **Data Format:** Data is passed as Python objects (instances of Pydantic models defined in `app/models/`).
-* **Error Handling:** Standard Python exception handling within the application.
-* **Tracing:** OpenTelemetry can be configured in `app/main.py` to trace requests and internal calls across the application components.
+* **SQLite** via SQLAlchemy — stores parsed resumes, job postings, resume versions, and scan state.
+* **`data/resumes/`** — sample resumes (PDF, DOCX, MD, TXT, TEX) for testing.
+* **`data/startups/startups.md`** — curated startup/company database consumed by the scanner.
 
-## 2.3 Observability Strategy (Simplified MVP) 🕵️‍♀️
+## 2.2 Communication Flow & Protocols ↔️
 
-* **Logging:** Standard Python logging (`loguru` or `logging` module) configured in `app/core/config.py` or `app/main.py`.
-* **Tracing (Optional but Recommended):** OpenTelemetry configured in `app/main.py` for the FastAPI application. This will provide insights into request flows and performance of different internal services.
-* **Metrics (Optional):** Prometheus metrics can be exposed by the FastAPI application if needed, using libraries like `starlette-exporter`.
+```
+User → Gradio UI → httpx → FastAPI endpoints → Agents → Services → DB / LLM
+```
 
-## 2.4 Detailed Project File Structure (MVP Refactor) 📁
+* **Frontend ↔ Backend:** Gradio UI calls FastAPI endpoints over HTTP using `httpx`. The UI runs as a separate process (or co-located) and communicates with the API layer.
+* **API → Agents:** Route handlers invoke Pydantic AI agents directly via Python function calls. Agents return structured Pydantic model instances.
+* **Agents → Services:** Agents call service-layer methods (parsing, LLM, scraping, DB) as direct Python calls. All inter-module data is passed as typed Pydantic models.
+* **Services → External:** Services interact with external systems — LiteLLM for LLM providers, LiteParse/GLM-OCR for document parsing, TinyFish/Crawl4AI for scraping, SQLite for persistence.
+* **Error Handling:** Standard Python exception handling with structured logging via loguru. API errors surface as FastAPI `HTTPException` with typed error responses.
+
+## 2.3 Observability Strategy 🕵️‍♀️
+
+* **Logfire** is instrumented at the LiteLLM level with success/failure callbacks, providing per-request tracing of LLM calls (latency, token usage, errors).
+* **Logfire spans** are placed in agents and services for distributed tracing across the full request lifecycle.
+* **loguru** provides structured application logging (parsing events, DB operations, scraper activity).
+* All observability is configured in `core/llm_config.py` and initialized at app startup in `main.py`.
+
+## 2.4 Detailed Project File Structure 📁
 
 ```plaintext
 Job_Booster/
-├── app/                      # Main application source code
+├── app/
 │   ├── __init__.py
-│   ├── main.py               # FastAPI app definition, startup, routers, and OTel/Logfire setup
-│   ├── frontend.py           # Gradio UI app (if served by FastAPI or run standalone)
-│   ├── agents/               # Business logic, agent implementations
+│   ├── main.py               # FastAPI app, lifespan, routers, CORS
+│   ├── frontend.py           # Gradio UI (5 tabs)
+│   ├── agents/
 │   │   ├── __init__.py
-│   │   └── resume_tailor.py  # Core agent logic for resume tailoring, analysis, etc.
-│   ├── core/                 # Core components like config, logging setup
+│   │   ├── resume_tailor.py  # Pydantic AI agent + pydantic-graph workflow
+│   │   └── startup_scanner.py # Pydantic AI agent for job extraction
+│   ├── api/
 │   │   ├── __init__.py
-│   │   └── config.py
-│   ├── models/               # Pydantic and SQLAlchemy models
+│   │   ├── resume_routes.py  # POST /parse/resume, /parse/job, /analyze, /tailor
+│   │   └── scanner_routes.py # GET/POST /scanner/*, /jobs/top, /progress
+│   ├── core/
 │   │   ├── __init__.py
-│   │   ├── api_models.py     # Pydantic models for API request/response
-│   │   ├── job_model.py      # Pydantic models for Job
-│   │   ├── resume_model.py   # Pydantic models for Resume
-│   │   └── db_models.py      # SQLAlchemy models for database tables
-│   ├── services/             # Service layer for parsing, DB, LLM interaction
+│   │   ├── config.py         # pydantic-settings, env loading
+│   │   └── llm_config.py     # LiteLLM + Logfire configuration
+│   ├── models/
 │   │   ├── __init__.py
-│   │   ├── db_service.py      # For database interactions (SQLite via SQLAlchemy)
-│   │   ├── llm_service.py     # For interacting with LLMs (Google Gemini via ADK)
-│   │   └── parsing_service.py # For document parsing (text, PDF, DOCX, OCR)
-│   ├── prompts/              # LLM Prompts (e.g., job_parser_prompt.md, resume_parser_prompt.md)
-│   │   └── __init__.py
-├── data/                     # Local data like SQLite DB file (e.g., job_booster.db), sample files for testing
-├── scripts/                  # Utility scripts
-│   └── run_app.py            # Script to run the main FastAPI application
-├── tests/                    # Automated tests
-│   ├── __init__.py
-│   ├── test_api.py           # Tests for FastAPI endpoints in app/main.py or its routers
-│   ├── test_agents.py        # Tests for logic in app/agents/
-│   ├── test_services.py      # Unit tests for app/services/
-│   └── test_models.py        # Tests for Pydantic/SQLAlchemy models in app/models/
-├── .env.example              # Example environment variables
-├── .gitignore
-├── 1 - Vision & Goals.md
-├── 2 - Architecutre & structures.md # This file
-├── 3 - Implementation Details.md
-├── Hackathon_MVP_Plan.md
-├── LICENSE
-├── README.md
-├── requirements.txt          # Python dependencies for the entire project
-└── docker-compose.yml        # (Optional for MVP) If containerization is still desired for the single app + DB
-└── Dockerfile                # (Optional for MVP) To build the Job_Booster app container
+│   │   ├── base_model.py     # JobBoosterBase (UUID), BaseResponse
+│   │   ├── resume_model.py   # Resume, ContactInfo, Education, WorkExperience, Skill, etc.
+│   │   ├── job_model.py      # JobPosting, CompanyInfo, Requirement, Responsibility, Benefit
+│   │   ├── api_models.py     # Request/response DTOs
+│   │   ├── db_models.py      # SQLAlchemy tables (ResumeDB, JobPostingDB, ResumeVersionDB, etc.)
+│   │   └── startup_model.py  # Startup, JobOpening, ScannerState
+│   ├── prompts/
+│   │   ├── __init__.py
+│   │   ├── resume_parser_prompt.md
+│   │   └── job_parser_prompt.md
+│   ├── services/
+│   │   ├── __init__.py
+│   │   ├── parsing_service.py  # LiteParse + GLM-OCR + python-docx + LaTeX
+│   │   ├── db_service.py       # SQLAlchemy CRUD (DatabaseService class)
+│   │   ├── llm_service.py      # LiteLLM async completion with fallback
+│   │   ├── scraper_service.py  # TinyFish (primary) + Crawl4AI (fallback) factory
+│   │   ├── career_scraper.py   # Crawl4AI implementation (backward compat)
+│   │   └── startup_parser.py   # Markdown parser for startups.md
+│   └── ui/
+│       └── scanner_tab.py    # Gradio scanner tab component
+├── data/
+│   ├── resumes/              # Sample resumes (PDF, DOCX, MD, TXT, TEX)
+│   └── startups/             # startups.md database
+├── scripts/
+│   └── run_app.py            # Server launcher with dependency checks
+├── tests/
+│   ├── test_resume_models.py
+│   ├── test_job_models.py
+│   ├── test_api.py
+│   └── test_startup_scanner.py
+├── pyproject.toml
+├── .env.example
+└── .gitignore
 ```
 
-This revised structure centralizes the application logic, making it easier to manage for the MVP scope, while still allowing for logical separation of concerns within the `app` directory. Future expansion to a more distributed model can build upon these well-defined internal services.
+## 2.5 Technology Stack 🧰
+
+| Layer | Technology | Purpose |
+|-------|-----------|---------|
+| Backend | FastAPI | Async API, Pydantic integration |
+| Frontend | Gradio | 5-tab web UI |
+| Agents | Pydantic AI | Type-safe LLM agents with structured output |
+| Workflows | pydantic-graph | Typed graph state machines |
+| LLM | LiteLLM | Multi-provider (100+ models), fallback chains |
+| Parsing | LiteParse | Fast PDF/DOCX/image parsing (Node.js CLI) |
+| OCR | GLM-OCR | Vision-based OCR for scanned documents |
+| Scraping | TinyFish + Crawl4AI | Career page scraping |
+| Database | SQLAlchemy + SQLite | ORM, persistence |
+| Observability | Logfire | Tracing, logging |
+| Config | pydantic-settings | Environment management |

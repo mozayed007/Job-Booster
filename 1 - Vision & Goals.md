@@ -1,60 +1,126 @@
-# 🚀 Job_Booster: Project Vision, Goals & Technology Foundation (MVP Refactor)
+# 🚀 Job_Booster: Project Vision, Goals & Technology Foundation
 
 ## 1.1 Introduction: Why This Approach?
 
-In today's competitive job market, tailoring applications is crucial but time-consuming. Job_Booster aims to automate and significantly enhance this process by intelligently leveraging a user's entire work history. For the Minimum Viable Product (MVP), we are adopting a **streamlined, integrated agentic architecture** built around a single FastAPI application with a Gradio UI. This approach offers:
+In today's competitive job market, tailoring applications is crucial but time-consuming. Job_Booster automates and enhances this process by intelligently leveraging a user's entire work history. Built as a **production-grade, type-safe agentic application** with a FastAPI backend and Gradio UI, the architecture delivers:
 
-* **Modularity:** Core functionalities (parsing, LLM interaction, database management) are encapsulated in distinct service modules within the application, promoting separation of concerns.
-* **Simplified Development & Deployment:** A single application is easier to develop, debug, test, and deploy compared to a distributed system of microservices, especially for an MVP.
-* **Maintainability:** Clear internal interfaces between components (API layer, agents, services) facilitate easier updates and modifications.
+* **Type Safety End-to-End:** Pydantic AI agents produce structured, validated outputs at every stage — no raw LLM string parsing. Graph workflows enforce typed state transitions.
+* **Multi-Provider Resilience:** LiteLLM routes to 100+ models across OpenAI, Anthropic, Google, Ollama, OpenRouter, and more — with automatic fallback chains and cost optimization.
+* **Modularity with Cohesion:** Core capabilities (parsing, agents, graph workflows, persistence) are encapsulated in distinct service modules within a single application, promoting separation of concerns while remaining easy to deploy.
+* **Observability by Default:** Logfire traces every agent call, graph transition, and API request out of the box.
 
-This plan outlines the development of Job_Booster, focusing on delivering a powerful, AI-driven assistant for job seekers within this consolidated structure.
+This document defines the full product vision for Job_Booster — an AI-driven assistant that transforms a user's resume history and a target job description into an optimized, tailored application package.
 
 ## 1.2 Core Project Goals 🎯
 
-The primary objective is to transform a user's collection of past resumes and a target job description into a highly optimized application package. (Note: The following goals outline the target functionality; current implementations are foundational and in a "To-Do" state for progressive development.)
+The primary objective is to transform a user's collection of past resumes and a target job description into a highly optimized application package.
 
 1. **Intelligent Input Processing 📄➡️🧱:**
-    * Reliably parse resumes and job descriptions from various formats (PDF, DOCX, plain text, URLs), including handling scanned documents via OCR using `app/services/parsing_service.py`.
-    * Extract structured information (contact details, education, experience, skills, projects, job requirements) via the `parsing_service` (which may leverage an LLM service).
-    * Persist this structured data using the `app/services/db_service.py` for efficient querying and retrieval by agents.
+    * Reliably parse resumes and job descriptions from multiple formats: PDF, DOCX, Markdown, plain text, and LaTeX.
+    * Handle scanned documents and image-based PDFs via GLM-OCR (Z.ai's 0.9B vision OCR model, #1 on OmniDocBench), accessible through cloud API or self-hosted via vLLM/Ollama.
+    * Extract structured information (contact details, education, experience, skills, projects, job requirements) into validated Pydantic models via Pydantic AI agents with structured output.
+    * Use LiteParse (LlamaIndex) for fast local document parsing — spatial PDF extraction, DOCX support, and image handling via a Node.js CLI, replacing fragile legacy parsers.
 
-2. **Knowledge Base Construction & Enrichment (Simplified for MVP) 🧠:**
+2. **Knowledge Base Construction & Enrichment 🧠:**
     * Identify key entities (Skills, Technologies, Companies, Job Titles, Project Names, Requirements) within parsed documents.
-    * Store these entities and their relationships in the SQLite database via `db_service.py`. For the MVP, a full-fledged graph database might be deferred in favor of structured relational storage that can still capture essential connections.
-    * This creates a rich representation of the user's history and the job's demands.
+    * Persist all structured data in SQLite via SQLAlchemy ORM with full CRUD operations.
+    * Support resume versioning — multiple file versions and formats stored per resume entity.
+    * Track parsed job descriptions independently, enabling comparison across multiple postings.
+    * This creates a rich, queryable representation of the user's history and the job market's demands.
 
 3. **Context-Aware Resume Synthesis ✨📄:**
-    * Analyze the target job description's requirements against the user's profile (from `db_service.py`).
-    * Identify the most relevant skills, experiences, and projects.
-    * Instruct the `app/services/llm_service.py` (providing rich context from the `db_service`) to generate a *new, cohesive, tailored resume* optimized for the specific job, adhering to Pydantic models defined in `app/models/resume_model.py` and `app/models/job_model.py`.
+    * Analyze the target job description's requirements against the user's full profile from the knowledge base.
+    * Identify the most relevant skills, experiences, and projects to highlight.
+    * Generate a tailored resume via a **Pydantic AI agent** executing a **pydantic-graph workflow**: `ParseInput → GenerateTailored → ValidateOutput`. Each node is a typed state transition with validated inputs and outputs.
+    * The graph workflow enforces a deterministic pipeline while allowing the LLM creative freedom within each stage.
 
 4. **Multi-faceted Matching Analysis 📊:**
-    * Generate embeddings for the synthesized resume and job description using `llm_service.py` (or a dedicated embedding function within it).
-    * Perform vector similarity search (using vector indexes stored as files or within SQLite if feasible for MVP scale) for a quantitative match score.
-    * Leverage the structured data in `db_service.py` and LLM analysis via `llm_service.py` to identify explicit skill/requirement matches.
+    * Perform structured skill matching between the resume and job description with confidence scores.
+    * Identify explicit requirement matches, partial matches, and gaps using Pydantic AI agent analysis.
+    * Produce a quantitative match score alongside qualitative insights, all returned as structured Pydantic models.
 
 5. **Actionable Feedback & Gap Analysis 💡:**
-    * Go beyond a simple score. Use data from `db_service.py` and the `llm_service.py` to:
-        * Pinpoint specific skills mentioned in the job description but missing or underrepresented in the synthesized resume.
-        * Suggest rephrasing certain experiences to better align with job keywords/responsibilities.
+    * Go beyond a simple score to deliver concrete, actionable recommendations:
+        * Pinpoint specific skills mentioned in the job description but missing or underrepresented in the resume.
+        * Suggest rephrasing of existing experiences to better align with job keywords and responsibilities.
+        * Highlight transferable skills the user may have overlooked.
+    * All feedback is structured and machine-readable, enabling downstream automation.
 
 6. **Personalized Cover Letter Generation ✍️:**
-    * Use the synthesized resume and job description details, along with insights from the analysis phase, to prompt the `llm_service.py` to generate a compelling, personalized cover letter.
+    * Use the tailored resume and job description, along with match analysis insights, to generate a compelling, personalized cover letter.
+    * *Planned feature — not yet implemented.*
 
-## 1.3 Technology Stack Rationale (MVP Refactor) 💻
+## 1.3 Technology Stack Rationale 💻
 
-The chosen technologies form a cohesive ecosystem for building this integrated application:
+Each technology was selected after evaluating alternatives. The choices prioritize type safety, multi-provider flexibility, parsing quality, and developer experience.
 
-* **FastAPI 🚀:** Excellent for building the high-performance async API for the entire Job_Booster application. Its Pydantic integration simplifies data validation.
-* **Pydantic ✅:** Provides robust data validation and settings management, crucial for defining reliable data structures (`app/models/`) and API contracts.
-* **Google ADK 🤖:** The framework to structure the reasoning and state management of the agents within `app/agents/`. This helps in organizing complex LLM-driven workflows with Google Gemini.
-* **Internal Service Modules (`app/services/`)**: Core functionalities like parsing, database interaction, and LLM communication are implemented as internal Python modules/classes within the FastAPI application. This simplifies architecture for the MVP.
-  * `db_service.py`: Manages all database operations (CRUD) for SQLite using SQLAlchemy.
-  * `llm_service.py`: Abstracts communication with the chosen LLM (Google Gemini via Google ADK).
-  * `parsing_service.py`: Handles extraction of text and structured data from resumes and job descriptions (PDF, DOCX, TXT, potentially with OCR).
-* **SQLAlchemy & SQLite 🗄️:** Provide the ORM and database engine for persistent storage, accessed via `app/services/db_service.py`.
-* **Logfire 🪵 & OpenTelemetry 📡:** Essential for observability. Configured within the single FastAPI application (`app/main.py`) to trace requests and monitor performance.
-* **Docker & Docker Compose 🐳:** Useful for creating a consistent development environment and for packaging the application and its database (if needed) for deployment.
-* **Git & CI/CD (GitHub Actions) 🐙⚙️:** Standard tools for version control, automated testing, and deployment pipelines.
-* **`pip` 📦:** Python package management for the project's single `requirements.txt`.
+### 🤖 Agent Framework: Pydantic AI (over Google ADK, LangChain, CrewAI)
+
+* **Type-safe by design:** Agents declare structured output types via Pydantic models — invalid outputs are caught at the boundary, not downstream.
+* **Native tool calling:** Agents can invoke tools (database queries, parsers, scrapers) with typed arguments and validated results.
+* **Test support:** Built-in test fixtures and mock modes for unit testing agent logic without live LLM calls.
+* **Multi-provider:** Works with any LLM backend via LiteLLM — not locked to a single provider.
+* Google ADK required raw string parsing and offered no structured output guarantees. LangChain/CrewAI add abstraction layers that obscure control flow.
+
+### 🔀 Graph Workflows: pydantic-graph (over manual chains, LangGraph)
+
+* **Typed state machines:** Each node declares its input/output types. State transitions are validated at every step.
+* **Deterministic pipelines:** The `ParseInput → GenerateTailored → ValidateOutput` graph is explicit, debuggable, and testable.
+* **Composability:** Graphs can be nested or extended without refactoring existing nodes.
+* LangGraph couples tightly to LangChain's abstractions. Manual chains lack formal state validation.
+
+### 🔌 LLM Provider: LiteLLM (over single-provider SDKs)
+
+* **100+ models** via a unified OpenAI-compatible interface: OpenAI, Anthropic, Google, Ollama, OpenRouter, Together, Groq, and more.
+* **Fallback chains:** Automatically retries on a secondary provider if the primary fails or rate-limits.
+* **Cost optimization:** Route to cheaper models for simple tasks, expensive models for complex reasoning.
+* **No vendor lock-in:** Swap providers by changing a model string — no code changes.
+* Single-provider SDKs (e.g., `google-generativeai`, `openai`) lock the application to one vendor and require rewriting integration code to switch.
+
+### 📄 Document Parsing: LiteParse by LlamaIndex (over PyPDF2, pypdf, pdfplumber)
+
+* **Multi-format:** PDF, DOCX, images, and more through a single CLI interface.
+* **Spatial parsing:** Understands document layout — tables, columns, headers — not just raw text extraction.
+* **OCR integration:** Handles scanned PDFs natively by invoking OCR backends.
+* **Speed:** Local Node.js CLI execution with no Python subprocess overhead.
+* PyPDF2/pypdf extract raw text with no layout awareness. pdfplumber is PDF-only. None handle DOCX or images.
+
+### 👁️ OCR: GLM-OCR by Z.ai (over pytesseract, EasyOCR, PaddleOCR)
+
+* **Vision-based architecture:** 0.9B parameter vision model that understands document structure, not just character recognition.
+* **#1 on OmniDocBench:** State-of-the-art accuracy on complex layouts — tables, multi-column, handwritten text.
+* **Flexible deployment:** Cloud API for quick integration, or self-host via vLLM/Ollama for air-gapped environments.
+* **No preprocessing required:** Handles rotations, skew, and noise without image preprocessing pipelines.
+* pytesseract requires clean, preprocessed images and fails on complex layouts. EasyOCR/PaddleOCR are character-level and lack document structure understanding.
+
+### 🕷️ Web Scraping: TinyFish + Crawl4AI (over raw Playwright, BeautifulSoup)
+
+* **TinyFish (primary):** Cloud API for scraping job pages — no browser installation, no headless Chrome management, generous free tier.
+* **Crawl4AI (fallback):** Local Playwright-based scraper for offline or API-limited scenarios. Async-first, built for AI pipelines.
+* Raw Playwright requires managing browser binaries and lifecycle. BeautifulSoup alone cannot render JavaScript-heavy job pages.
+
+### 🗄️ Database: SQLAlchemy + SQLite (over raw SQL, Peewee, Tortoise)
+
+* **Full ORM:** Models, relationships, migrations, and query building with type hints.
+* **SQLite:** Zero-config, file-based, sufficient for single-user workloads. Easily swappable to PostgreSQL.
+* **CRUD abstraction:** `db_service.py` provides clean create/read/update/delete operations for all entities.
+* Raw SQL is error-prone and untyped. Peewee lacks async support. Tortoise couples to asyncio and has a smaller ecosystem.
+
+### 📦 Package Management: pyproject.toml (over requirements.txt, setup.py)
+
+* **Single source of truth:** Project metadata, dependencies, dev dependencies, build system, and tool configuration in one file.
+* **PEP 621 compliant:** Standard format supported by pip, uv, hatch, and all modern Python tooling.
+* **No drift:** `requirements.txt` files silently fall out of sync with actual installed versions. `pyproject.toml` is the canonical declaration.
+
+### 📊 Observability: Logfire by Pydantic (over raw logging, Sentry)
+
+* **Native Pydantic integration:** Automatically logs Pydantic model states, validation errors, and agent outputs.
+* **Tracing:** End-to-end request traces across API endpoints, agent calls, and graph transitions.
+* **Zero-config:** Import and initialize — no dashboards to set up, no agents to install.
+* Raw logging provides no structured tracing. Sentry focuses on errors, not agent reasoning traces.
+
+### ⚙️ Configuration: pydantic-settings + python-dotenv
+
+* **Typed configuration:** Environment variables are parsed into Pydantic models with validation and defaults.
+* **`.env` support:** Local development configuration without committing secrets.
+* **Fail-fast:** Invalid configuration is caught at startup, not at runtime.
