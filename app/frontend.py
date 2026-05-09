@@ -83,8 +83,8 @@ async def _tailor_async(
         result = resp.json()
         if result.get("success"):
             d = result["data"]
-            return d["tailored_content"], d.get("improvements", []), {}, {}
-        return result.get("message", "Error"), [], {}, {}
+            return d["tailored_content"], d.get("improvements", [])
+        return result.get("message", "Error"), []
 
 
 async def _export_async(content: str, format_type: str, title: str) -> Optional[str]:

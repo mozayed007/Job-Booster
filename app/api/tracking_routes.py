@@ -27,17 +27,12 @@ class UpdateStatusRequest(BaseModel):
     notes: Optional[str] = None
 
 
-def _get_tracker() -> ApplicationTracker:
-    db = get_db_session()
-    db_svc = DatabaseService(db)
-    return ApplicationTracker(db_service=db_svc)
-
-
 @router.post("")
 async def track_application(request: TrackApplicationRequest):
     """Track a new job application."""
+    db = get_db_session()
     try:
-        tracker = _get_tracker()
+        tracker = ApplicationTracker(db_service=DatabaseService(db))
         data = request.model_dump(exclude_none=True)
         app_id = tracker.track_application(data)
         if app_id is None:
@@ -48,48 +43,67 @@ async def track_application(request: TrackApplicationRequest):
     except Exception as e:
         logger.error(f"Track application error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        db.close()
 
 
 @router.get("")
 async def list_applications(
-    user_id: Optional[int] = None, status: Optional[str] = None, limit: int = 100, offset: int = 0
+    user_id: Optional[int] = None,
+    status: Optional[str] = None,
+    limit: int = 100,
+    offset: int = 0,
 ):
     """List applications with optional status filter."""
+    db = get_db_session()
     try:
-        tracker = _get_tracker()
-        apps = tracker.get_applications(user_id=user_id, status=status, limit=limit, offset=offset)
+        tracker = ApplicationTracker(db_service=DatabaseService(db))
+        apps = tracker.get_applications(
+            user_id=user_id, status=status, limit=limit, offset=offset
+        )
         return {"success": True, "count": len(apps), "applications": apps}
     except Exception as e:
         logger.error(f"List applications error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        db.close()
 
 
 @router.put("/{app_id}")
 async def update_application(app_id: int, request: UpdateStatusRequest):
     """Update application status."""
+    if request.status not in VALID_STATUSES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid status. Must be one of: {', '.join(sorted(VALID_STATUSES))}",
+        )
+    db = get_db_session()
     try:
-        if request.status not in VALID_STATUSES:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Invalid status. Must be one of: {', '.join(sorted(VALID_STATUSES))}",
-            )
-        tracker = _get_tracker()
+        tracker = ApplicationTracker(db_service=DatabaseService(db))
         success = tracker.update_status(app_id, request.status, request.notes)
         if not success:
-            raise HTTPException(status_code=404, detail="Application not found or update failed")
-        return {"success": True, "message": f"Application {app_id} updated to '{request.status}'"}
+            raise HTTPException(
+                status_code=404, detail="Application not found or update failed"
+            )
+        return {
+            "success": True,
+            "message": f"Application {app_id} updated to '{request.status}'",
+        }
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Update application error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        db.close()
 
 
 @router.delete("/{app_id}")
 async def delete_application(app_id: int):
     """Delete an application."""
+    db = get_db_session()
     try:
-        tracker = _get_tracker()
+        tracker = ApplicationTracker(db_service=DatabaseService(db))
         success = tracker.delete_application(app_id)
         if not success:
             raise HTTPException(status_code=404, detail="Application not found")
@@ -99,15 +113,20 @@ async def delete_application(app_id: int):
     except Exception as e:
         logger.error(f"Delete application error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        db.close()
 
 
 @router.get("/stats")
 async def application_stats(user_id: Optional[int] = None):
     """Get application statistics."""
+    db = get_db_session()
     try:
-        tracker = _get_tracker()
+        tracker = ApplicationTracker(db_service=DatabaseService(db))
         stats = tracker.get_application_stats(user_id=user_id)
         return {"success": True, "stats": stats}
     except Exception as e:
         logger.error(f"Application stats error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        db.close()
