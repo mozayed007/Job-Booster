@@ -19,6 +19,7 @@ from app.models.api_models import (
     TailoredResumeResponse,
 )
 from app.services.db_service import (
+    AnalysisResultCreateData,
     CoverLetterCreateData,
     DatabaseService,
     JobPostingCreateData,
@@ -152,6 +153,17 @@ async def analyze_match(
             gaps=list(unmatched),
             suggestions=[f"Add missing skill to resume: {s}" for s in list(unmatched)[:5]],
         )
+
+        db = get_db_session()
+        try:
+            svc = DatabaseService(db)
+            svc.store_analysis_result(AnalysisResultCreateData(
+                resume_id=0,
+                job_id=0,
+                analysis_data=analysis.model_dump(),
+            ))
+        finally:
+            db.close()
 
         return AnalysisResponse(
             success=True,

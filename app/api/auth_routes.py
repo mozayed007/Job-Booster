@@ -80,7 +80,7 @@ async def update_profile(
 
         profile = user.profile_json or {}
         for key in updates:
-            if key not in ("name", "email", "password"):
+            if key not in ("name", "email", "password", "hashed_password"):
                 profile[key] = updates[key]
         if "password" in updates:
             profile["hashed_password"] = AuthService.hash_password(updates["password"])

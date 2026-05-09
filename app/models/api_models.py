@@ -14,7 +14,7 @@ class ResumeParseResponse(BaseResponse):
     """Response model for resume parsing."""
 
     data: Optional[Resume] = None
-    resume_version_id: Optional[UUID] = None
+    resume_version_id: Optional[int] = None
 
 
 class JobParseResponse(BaseResponse):

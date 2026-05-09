@@ -3,11 +3,9 @@ FROM python:3.12-slim AS builder
 
 WORKDIR /build
 
-COPY pyproject.toml ./
+COPY . .
 
 RUN pip install --no-cache-dir --prefix=/install .
-
-COPY . .
 
 # ── Stage 2: runtime ────────────────────────────────────────────────
 FROM python:3.12-slim AS runtime
@@ -25,10 +23,10 @@ COPY --from=builder /install /usr/local
 
 WORKDIR /app
 
-COPY app/ ./app/
-COPY scripts/ ./scripts/
-COPY data/ ./data/
-COPY pyproject.toml ./
+COPY --from=builder /build/app/ ./app/
+COPY --from=builder /build/scripts/ ./scripts/
+COPY --from=builder /build/data/ ./data/
+COPY --from=builder /build/pyproject.toml ./
 
 RUN mkdir -p outputs
 
