@@ -1,7 +1,6 @@
 """Startup Scanner Models - Pydantic models for type-safe job extraction."""
 
 from datetime import datetime
-from typing import List, Optional
 
 from pydantic import BaseModel, Field
 
@@ -12,12 +11,12 @@ class Startup(BaseModel):
     name: str
     city: str
     category: str = Field(description="e.g., Medicine, NLP, Robotics")
-    website: Optional[str] = None
-    linkedin: Optional[str] = None
-    founded: Optional[str] = None
-    employees: Optional[str] = None
-    followers: Optional[str] = None
-    funding_round: Optional[str] = None
+    website: str | None = None
+    linkedin: str | None = None
+    founded: str | None = None
+    employees: str | None = None
+    followers: str | None = None
+    funding_round: str | None = None
 
     model_config = {"extra": "ignore"}
 
@@ -28,7 +27,7 @@ class JobOpening(BaseModel):
     startup_name: str
     title: str
     location: str = Field(default="Remote")
-    requirements: List[str] = Field(default_factory=list)
+    requirements: list[str] = Field(default_factory=list)
     link: str
     relevance_score: float = Field(
         ge=0.0, le=1.0, description="0-1 score based on match to AI/ML/GPU/distributed systems"
@@ -40,11 +39,11 @@ class JobOpening(BaseModel):
 class ScannerState(BaseModel):
     """Persistent state for batch processing across sessions"""
 
-    processed_startups: List[str] = Field(default_factory=list)
+    processed_startups: list[str] = Field(default_factory=list)
     last_city_processed: str = ""
     batch_number: int = 0
     total_estimated_batches: int = 0
-    promising_roles: List[JobOpening] = Field(default_factory=list)
+    promising_roles: list[JobOpening] = Field(default_factory=list)
     status: str = Field(default="in_progress", pattern="^(in_progress|paused|complete)$")
     last_updated: datetime = Field(default_factory=datetime.now)
 
@@ -54,7 +53,7 @@ class ScannerState(BaseModel):
             self.processed_startups.append(startup_name)
         self.last_updated = datetime.now()
 
-    def add_roles(self, roles: List[JobOpening]) -> None:
+    def add_roles(self, roles: list[JobOpening]) -> None:
         """Add promising roles, keeping top by relevance"""
         self.promising_roles.extend(roles)
         self.promising_roles.sort(key=lambda x: x.relevance_score, reverse=True)
@@ -65,7 +64,7 @@ class ScannerState(BaseModel):
 class UserProfile(BaseModel):
     """User's background for relevance scoring"""
 
-    skills: List[str] = Field(
+    skills: list[str] = Field(
         default_factory=lambda: [
             "AI/ML",
             "Deep Learning",
@@ -79,8 +78,8 @@ class UserProfile(BaseModel):
             "Python",
         ]
     )
-    preferred_locations: List[str] = Field(default_factory=lambda: ["Remote", "EU", "Cairo"])
-    preferred_categories: List[str] = Field(
+    preferred_locations: list[str] = Field(default_factory=lambda: ["Remote", "EU", "Cairo"])
+    preferred_categories: list[str] = Field(
         default_factory=lambda: [
             "Medicine",
             "NLP",

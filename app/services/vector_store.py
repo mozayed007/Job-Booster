@@ -47,8 +47,8 @@ class VectorStore:
 
     def __init__(
         self,
-        embedding_service: Optional[EmbeddingService] = None,
-        persist_dir: Optional[Path] = None,
+        embedding_service: EmbeddingService | None = None,
+        persist_dir: Path | None = None,
     ):
         if self._initialized:
             return
@@ -56,7 +56,7 @@ class VectorStore:
         self._available = QDRANT_AVAILABLE
         self._embedding_service = embedding_service or get_embedding_service()
         self._persist_dir = persist_dir or QDRANT_PATH
-        self._client: Optional[Any] = None
+        self._client: Any | None = None
 
         if self._available:
             self._init_client()
@@ -90,7 +90,7 @@ class VectorStore:
         collection: str,
         doc_id: str,
         text: str,
-        metadata: Optional[dict[str, Any]] = None,
+        metadata: dict[str, Any] | None = None,
     ):
         """Add a document to a collection."""
         self._ensure_collection(collection)
@@ -108,7 +108,7 @@ class VectorStore:
         collection: str,
         query_text: str,
         n_results: int = 5,
-        filter_by: Optional[dict[str, str]] = None,
+        filter_by: dict[str, str] | None = None,
     ) -> list[dict[str, Any]]:
         """Search a collection by query text."""
         if not query_text.strip():

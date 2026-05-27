@@ -27,7 +27,7 @@ class ResumeVersion(JobBoosterBase):
     version_name: str
     file_path: str
     file_format: ResumeFormat
-    raw_text: Optional[str] = None
+    raw_text: str | None = None
     parsed_data: Optional["Resume"] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     is_active: bool = True
@@ -37,12 +37,12 @@ class ContactInfo(JobBoosterBase):
     """Contact information of a person."""
 
     name: str = ""
-    email: Optional[str] = None
-    phone: Optional[str] = None
-    linkedin: Optional[str] = None
-    github: Optional[str] = None
-    location: Optional[str] = None
-    website: Optional[str] = None
+    email: str | None = None
+    phone: str | None = None
+    linkedin: str | None = None
+    github: str | None = None
+    location: str | None = None
+    website: str | None = None
 
 
 class Education(JobBoosterBase):
@@ -51,9 +51,9 @@ class Education(JobBoosterBase):
     institution: str
     degree: str
     field_of_study: str
-    start_date: Optional[date] = None
-    end_date: Optional[date] = None
-    gpa: Optional[float] = None
+    start_date: date | None = None
+    end_date: date | None = None
+    gpa: float | None = None
 
 
 class WorkExperience(JobBoosterBase):
@@ -61,9 +61,9 @@ class WorkExperience(JobBoosterBase):
 
     company: str
     position: str
-    start_date: Optional[date] = None
-    end_date: Optional[date] = None
-    location: Optional[str] = None
+    start_date: date | None = None
+    end_date: date | None = None
+    location: str | None = None
     description: str = ""
     achievements: list[str] = Field(default_factory=list)
     skills_used: list[str] = Field(default_factory=list)
@@ -75,25 +75,25 @@ class Project(JobBoosterBase):
     name: str
     description: str = ""
     technologies: list[str] = Field(default_factory=list)
-    url: Optional[str] = None
+    url: str | None = None
 
 
 class Skill(JobBoosterBase):
     """Skill details."""
 
     name: str
-    category: Optional[str] = None
-    proficiency: Optional[str] = None
-    years_of_experience: Optional[int] = None
+    category: str | None = None
+    proficiency: str | None = None
+    years_of_experience: int | None = None
 
 
 class Certification(JobBoosterBase):
     """Certification details."""
 
     name: str
-    issuer: Optional[str] = None
-    date: Optional[date] = None
-    url: Optional[str] = None
+    issuer: str | None = None
+    cert_date: date | None = None
+    url: str | None = None
 
 
 class Resume(JobBoosterBase):
@@ -102,10 +102,10 @@ class Resume(JobBoosterBase):
     """
 
     contact_info: ContactInfo = Field(default_factory=ContactInfo)
-    summary: Optional[str] = None
+    summary: str | None = None
     skills: list[Skill] = Field(default_factory=list)
     education: list[Education] = Field(default_factory=list)
     work_experience: list[WorkExperience] = Field(default_factory=list)
     projects: list[Project] = Field(default_factory=list)
     certifications: list[Certification] = Field(default_factory=list)
-    raw_text: Optional[str] = None
+    raw_text: str | None = None

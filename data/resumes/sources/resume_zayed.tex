@@ -1,0 +1,185 @@
+\documentclass[letterpaper,10pt]{article} % Keep 10pt font
+
+\usepackage{latexsym}
+\usepackage[empty]{fullpage}
+\usepackage{titlesec}
+\usepackage{marvosym}
+\usepackage[usenames,dvipsnames]{color}
+\usepackage{verbatim}
+\usepackage{enumitem}
+% Keep list settings moderately tight for 10pt
+\setlist{itemsep=2pt, topsep=2pt, partopsep=1pt, parsep=1pt, leftmargin=0.12in}
+
+\usepackage[hidelinks]{hyperref}
+\usepackage{fancyhdr}
+\usepackage[english]{babel}
+\usepackage{tabularx}
+\usepackage{fontawesome}
+\usepackage{newtxtext}
+\input{glyphtounicode}
+
+\pagestyle{fancy}
+\fancyhf{}
+\fancyfoot{}
+\renewcommand{\headrulewidth}{0pt}
+\renewcommand{\footrulewidth}{0pt}
+% Reduced footskip to bring content up slightly
+\setlength{\footskip}{3.65pt}
+
+\addtolength{\oddsidemargin}{-0.5in}
+\addtolength{\evensidemargin}{-0.5in}
+\addtolength{\textwidth}{1in}
+\addtolength{\topmargin}{-.5in}
+% Increased text height slightly to pull up the second page
+\addtolength{\textheight}{1.05in}
+
+\urlstyle{same}
+
+\raggedbottom
+\raggedright
+\setlength{\tabcolsep}{0in}
+
+% Section title spacing - slightly more compressed
+\titleformat{\section}{
+  \vspace{-3pt}\scshape\raggedright\large % Less neg space before
+}{}{0em}{}[\color{black}\titlerule \vspace{-3pt}] % Less neg space after
+
+\pdfgentounicode=1
+
+% Custom commands - spacing slightly more compressed
+\newcommand{\resumeItem}[1]{
+  \item\small{#1 \vspace{1pt}} % Rely on itemsep, no neg space
+}
+
+% --- MODIFIED resumeSubheading Command Definition ---
+\newcommand{\resumeSubheading}[4]{
+  \vspace{0.25pt}\item % Minimal space before
+    \begin{tabular*}{0.98\textwidth}[t]{l@{\extracolsep{\fill}}r}
+      % Top Row: Company/Institution (Left) | Location (Right)
+      \textbf{#1} & \textit{\small #4} \\
+      % Bottom Row: Role/Degree (Left) | Dates (Right)
+      \textit{\small#3} & \small{#2} \\
+    \end{tabular*}\vspace{-3pt} % Slightly less neg space after
+}
+% --- End of Modification ---
+
+\newcommand{\resumeSubSubheading}[2]{
+    \item
+    \begin{tabular*}{0.98\textwidth}{l@{\extracolsep{\fill}}r}
+      \textit{\small#1} & \textit{\small #2} \\
+    \end{tabular*}\vspace{-3pt} % Slightly less neg space after
+}
+
+\newcommand{\resumeProjectHeading}[2]{
+    \vspace{0.2pt}\item % Minimal space before
+    \begin{tabular*}{0.98\textwidth}{l@{\extracolsep{\fill}}r}
+       \textbf{\small#1} & \textit{\small #2} \\
+    \end{tabular*}\vspace{-3pt} % Slightly less neg space after
+}
+
+\renewcommand\labelitemii{$\vcenter{\hbox{\tiny$\bullet$}}$}
+
+\newcommand{\resumeSubHeadingListStart}{\begin{itemize}[label={}]}
+\newcommand{\resumeSubHeadingListEnd}{\end{itemize}}
+\newcommand{\resumeItemListStart}{\begin{itemize}}
+% Spacing after lists - slightly more compressed
+\newcommand{\resumeItemListEnd}{\end{itemize}\vspace{-4pt}} % Less neg space
+
+%-------------------------------------------
+%%%%%%  RESUME STARTS HERE  %%%%%%%%%%%
+
+\begin{document}
+
+%----------HEADING---------- Centered Name and Contact Info
+\begin{center}
+    \textbf{\LARGE \scshape Mohamed Zayed Ahmed} \\
+    \vspace{2pt}
+    \small{ \ +201284907633 \quad \ \href{mailto: moh.z.ahmed007@gmail.com }{moh.z.ahmed007@gmail.com} \quad   \ \href{ https://www.linkedin.com/in/mozayed007 }{linkedin.com/in/mozayed007} \quad  \href{ https://www.github.com/mozayed007 }{github.com/mozayed007}}
+\end{center}
+
+%-----------EXPERIENCE-----------
+\section{Experience}
+
+\resumeSubHeadingListStart
+    \resumeSubheading{Sprints AI}{Sep 2025 – Present}{Research Engineer - R\&D}{Cairo, EG}
+    \resumeItemListStart
+      \resumeItem{Architected and implemented a multi-tenant AI Learning Companion platform with production FastAPI services, org-scoped authentication, Supabase/Postgres persistence, Qdrant retrieval, and Redis-backed state management.}
+      \resumeItem{Built a precision content-ingestion pipeline for videos, PDFs, code, markdown, and curriculum maps, preserving timestamps, spatial coordinates, line ranges, and hierarchy metadata to support exact citations and navigation.}
+      \resumeItem{Developed production agent workflows for tutoring, career coaching, study tools, and educational games, combining persona-based orchestration, curriculum-aware context, hybrid retrieval, and backend-switchable Qdrant/HelixDB search.}
+      \resumeItem{Implemented neuroscience-inspired memory, guardrails, and resource-safety layers for personalized learning flows, including episodic/semantic/procedural memory, preference recall, and VPS-safe ingestion under constrained infrastructure.}
+    \resumeItemListEnd
+
+    \resumeSubheading{Dark Entry}{Jun 2025 – Dec 2025}{Research Engineer (Contractor)}{}
+    \resumeItemListStart
+      \resumeItem{Architected and delivered three production platforms from zero to production, implementing high-throughput parsing engines, multi-source ingestion pipelines, and internal intelligence systems handling 50+ concurrent data feeds.}
+      \resumeItem{Developed a dual-implementation (Python/Rust) data processing engine with tiered pattern matching, per-pattern timeout guards, and a high-performance Rust port using Rayon and Crossbeam for 3x throughput gains over the Python baseline.}
+      \resumeItem{Engineered an ingestion orchestrator with custom adapters (Telegram/Discord), automated file-type classification, SHA256 content fingerprinting, and Redis-backed queuing for downstream processing stages.}
+      \resumeItem{Built a health-tracking system for 50+ data feeds with automated failure detection, configurable cooldown periods, and self-healing auto-recovery logic, reducing manual intervention by 80\%.}
+      \resumeItem{Implemented distributed system patterns including Circuit Breaker state machines, adaptive rate limiters with sliding windows, and semaphore-based concurrency control for external API integrations.}
+      \resumeItem{Refactored legacy monolithic services into modular FastAPI architectures, reducing database query volume by 70\% via bulk operations and memory-efficient NDJSON streaming for multi-terabyte datasets.}
+      \resumeItem{Hardened production infrastructure using Docker/Compose, Celery/Redis task orchestration, and structured observability with Prometheus metrics and OpenTelemetry tracing.}
+    \resumeItemListEnd
+
+    \resumeSubheading{Freelance Consulting \& Contracts}{Sep 2023 – Present}{ML Engineer (part-time) - (selected projects alongside full-time roles)}{Remote}
+    \resumeItemListStart
+        \resumeItem{Architected a multi-agent research framework using MCP servers and sequential pipelines to orchestrate autonomous information gathering and synthesis workflows.}
+        \resumeItem{Designed and built an autonomous NER pipeline for unstructured data using spaCy and transformer models, featuring responsible AI guardrails, continuous fine-tuning via active learning, and automated ingestion.}
+        \resumeItem{Developed and benchmarked oblique decision tree (ODT) controllers for pharmaceutical process control, extracting explicit control laws and comparing learned decision regions against MPC baselines.}
+        \resumeItem{Built a pharmaceutical process optimization framework using GP, DKL, BART, and CVAE models for experiment selection, design-space analysis, and inverse recipe generation.}
+        \resumeItem{Implemented a multi-process async benchmark system (for Stakpak) to evaluate and optimize LLMs, boosting experimentation velocity by 3x and enabling seamless provider switching across OpenAI, Anthropic, GDM and open-source models.}
+    \resumeItemListEnd
+
+    \resumeSubheading{Proteinea}{Aug 2022 – Nov 2022}{Deep Learning Intern}{Cairo, EG}
+    \resumeItemListStart
+      \resumeItem{Developed initial T5-based models for antigen-antibody interactions, laying foundation for graduation thesis that later surpassed SoTA baselines.}
+      \resumeItem{Automated evaluation pipelines and created TensorBoard visualizations, reducing analysis time by 30\%.}
+    \resumeItemListEnd
+
+\resumeSubHeadingListEnd
+
+%-----------PROJECTS-----------
+\section{Projects}
+\resumeSubHeadingListStart
+
+ % Project 1: Antigen-Antibody
+ \resumeProjectHeading{Antigen-Antibody Translation/Generation \normalfont{-- \textit{PyTorch, HuggingFace, T5, Pandas, AWS}}}{}
+ \resumeSubSubheading{Graduation Research Thesis}{}
+ \resumeItemListStart
+    \resumeItem{Developed a custom T5 Transformer that achieved 10\% higher performance than 2022 SoTA baselines on the SABDAB dataset (building on insights from Proteinea internship) using AWS NVIDIA A10G GPUs.}
+    \resumeItem{Enabled real-time monitoring with TensorBoard dashboards and facilitated team collaboration using Termius Vault and Tmux.}
+ \resumeItemListEnd
+
+ % Project 2: Multi-Agent Research System
+ \resumeProjectHeading{Multi-Agent Research System \normalfont{-- \textit{Google ADK, Pydantic, Asyncio, FastAPI, Gradio}}}{}
+ \resumeItemListStart
+    \resumeItem{Migrated a research workflow to Google's Agent Development Kit (ADK), creating a SequentialAgent pipeline for data collection, analysis, and report synthesis.}
+    \resumeItem{Integrated external APIs (BraveSearch, ArXiv, Wikipedia) and SQLite persistence to enhance system modularity and data gathering capabilities.}
+    \resumeItem{Drafted architecture diagrams and communication patterns to streamline development and ensure scalability.}
+ \resumeItemListEnd
+
+ % Project 3: LiveMem / THEN
+ \resumeProjectHeading{LiveMem / THEN \normalfont{-- \textit{PyTorch, nanochat, NumPy, Attention Hooks}}}{Independent Research}
+ \resumeItemListStart
+    \resumeItem{Architected a stateful ``live memory'' extension for \texttt{nanochat} (\texttt{THEN} architecture) that decouples weight training from post-training episodic memory ingestion and query-time recall.}
+    \resumeItem{Implemented a disk-tiered memory manager using \texttt{numpy.memmap} and chunked top-k retrieval to stream long-horizon traces from disk with bounded device-memory usage.}
+    \resumeItem{Built ingestion and query pipelines for frozen-model memory population and stateful recall, including persistence validation and synthetic long-horizon episode generation for benchmarking.}
+ \resumeItemListEnd
+
+\resumeSubHeadingListEnd
+
+%-----------SKILLS-----------
+\section{Skills}
+\begin{itemize}[label={}]
+    \item \small \textbf{Programming Languages}: Python (Advanced), Rust (Intermediate), C++ (learning CUDA), Triton.
+    \item \small \textbf{Frameworks \& Libraries}: PyTorch, TensorFlow, FastAPI, SQLAlchemy, Celery, Redis, Scrapy, Selenium, Playwright, Pydantic, Pandas, NumPy, Hugging Face, Scikit-Learn, OpenTelemetry, Prometheus, structlog
+    \item \small \textbf{Domain skills}: Distributed Systems, System Architecture, ML/DL, NLP (NER, LLMs, RAG), Computer Vision, Generative AI, Statistical Inference, Data Analysis, Vector Databases (Qdrant, Milvus)
+    \item \small \textbf{Tools \& Platforms}: Git, Docker, AWS, GCP, Azure, Ollama, Linux, WSL, SQLite, REST APIs, Kaggle
+\end{itemize}
+
+%-----------EDUCATION-----------
+\section{Education}
+\resumeSubHeadingListStart
+  \resumeSubheading{University of Science and Technology -- Zewail City}{Jun 2024}{Bachelor of Science, Communication and Information Engineering}{Giza, EG}
+\resumeSubHeadingListEnd
+
+\end{document}

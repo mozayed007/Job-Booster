@@ -148,7 +148,7 @@ def export_to_pdf(content: str, title: str = "Resume") -> bytes:
 
 
 def export_to_latex(content: str, title: str = "Resume", resume=None) -> str:
-    """Export to LaTeX using the template engine if Resume model is provided, otherwise fallback to markdown conversion."""
+    """Export to LaTeX (via template engine) or fallback to markdown conversion."""
     if resume is not None:
         from app.services.template_engine import render_resume
 

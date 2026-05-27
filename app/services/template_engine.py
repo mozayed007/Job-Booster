@@ -3,7 +3,6 @@
 import re
 from datetime import date
 from pathlib import Path
-from typing import Optional
 
 from loguru import logger
 
@@ -20,7 +19,7 @@ def _get_output_dir() -> Path:
     return Path(settings.RESUME_OUTPUT_DIR)
 
 
-def _format_date(d: Optional[date]) -> str:
+def _format_date(d: date | None) -> str:
     if not d:
         return "Present"
     return d.strftime("%b %Y")
@@ -66,7 +65,7 @@ def _build_contact_header(contact) -> str:
 \\end{{center}}"""
 
 
-def _build_summary(summary: Optional[str]) -> str:
+def _build_summary(summary: str | None) -> str:
     if not summary:
         return ""
     return f"\\section{{Professional Summary}}\n{_escape_latex(summary)}"
@@ -170,7 +169,7 @@ def _build_education(education) -> str:
     return "\n".join(lines)
 
 
-def render_resume(resume, template_path: Optional[Path] = None) -> str:
+def render_resume(resume, template_path: Path | None = None) -> str:
     """Render a Resume model into a complete LaTeX document using the template.
 
     Args:

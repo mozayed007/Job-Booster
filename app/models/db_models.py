@@ -191,6 +191,26 @@ class ApplicationDB(Base):
     updated_at = Column(DateTime, default=_utcnow, onupdate=_utcnow)
 
 
+class PipelineRun(Base):
+    """Pipeline execution history."""
+
+    __tablename__ = "pipeline_runs"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    pipeline_key = Column(String(100), nullable=False)
+    pipeline_name = Column(String(255))
+    status = Column(String(50), default="pending")
+    steps_completed = Column(Integer, default=0)
+    total_steps = Column(Integer, default=0)
+    artifacts_json = Column(JSON, nullable=True)
+    errors_json = Column(JSON, nullable=True)
+    resume_text = Column(Text, nullable=True)
+    job_text = Column(Text, nullable=True)
+    started_at = Column(DateTime, default=_utcnow)
+    completed_at = Column(DateTime, nullable=True)
+
+
 def create_tables(engine_or_url):
     """Creates all tables in the database.
 

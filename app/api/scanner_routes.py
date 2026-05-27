@@ -1,6 +1,5 @@
 """FastAPI Router for Startup Scanner endpoints."""
 
-from typing import List, Optional
 
 from fastapi import APIRouter, BackgroundTasks, Query
 from pydantic import BaseModel
@@ -25,25 +24,33 @@ class ScanProgressResponse(BaseModel):
 
 class ScanBatchResponse(BaseModel):
     jobs_found: int
-    jobs: List[JobOpening]
+    jobs: list[JobOpening]
     progress: ScanProgressResponse
 
 
 class StartupsListResponse(BaseModel):
     total: int
-    cities: List[str]
-    startups: List[Startup]
+    cities: list[str]
+    startups: list[Startup]
 
 
 # Global agent instance (lazy loaded)
-_agent: Optional[StartupScannerAgent] = None
+_agent: StartupScannerAgent | None = None
 
 
 def get_agent() -> StartupScannerAgent:
-    """Get or create the scanner agent."""
+    """Get the scanner agent from the registry."""
     global _agent
     if _agent is None:
-        _agent = StartupScannerAgent()
+        from app.agents.base_agent import get_agent as _base_get_agent
+        agent = _base_get_agent("startup_scanner")
+        if agent is None:
+            raise RuntimeError("startup_scanner agent not found — check agents.yaml")
+        if not isinstance(agent, StartupScannerAgent):
+            raise RuntimeError(
+                f"Expected StartupScannerAgent, got {type(agent).__name__}"
+            )
+        _agent = agent
     return _agent
 
 
@@ -57,8 +64,8 @@ async def _scan_batch_task(batch_size: int) -> None:
 # Endpoints
 @router.get("/startups", response_model=StartupsListResponse)
 async def list_startups(
-    city: Optional[str] = Query(None, description="Filter by city"),
-    category: Optional[str] = Query(None, description="Filter by category"),
+    city: str | None = Query(None, description="Filter by city"),
+    category: str | None = Query(None, description="Filter by category"),
     limit: int = Query(50, ge=1, le=500),
     offset: int = Query(0, ge=0),
 ):
@@ -133,7 +140,7 @@ async def scan_batch_background(
     }
 
 
-@router.get("/jobs/top", response_model=List[JobOpening])
+@router.get("/jobs/top", response_model=list[JobOpening])
 async def get_top_jobs(
     limit: int = Query(20, ge=1, le=100, description="Number of jobs to return"),
 ):

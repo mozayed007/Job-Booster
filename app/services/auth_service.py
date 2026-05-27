@@ -3,7 +3,6 @@
 import os
 import secrets
 from datetime import datetime, timedelta, timezone
-from typing import Optional
 
 from loguru import logger
 from sqlalchemy.orm import Session
@@ -48,7 +47,7 @@ class AuthService:
         return bcrypt.checkpw(plain.encode("utf-8"), hashed.encode("utf-8"))
 
     @staticmethod
-    def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
+    def create_access_token(data: dict, expires_delta: timedelta | None = None) -> str:
         if jwt is None:
             raise RuntimeError("python-jose not installed")
         to_encode = data.copy()
@@ -101,7 +100,7 @@ class AuthService:
             db.close()
 
     @staticmethod
-    def authenticate_user(email: str, password: str) -> Optional[User]:
+    def authenticate_user(email: str, password: str) -> User | None:
         db: Session = get_db_session()
         try:
             user = db.query(User).filter(User.email == email).first()

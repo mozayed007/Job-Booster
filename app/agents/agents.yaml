@@ -1,0 +1,58 @@
+# Agent configuration registry — loaded by BaseAgent/AgentsLoader
+# Each agent maps to a skill .md file and optionally a Python implementation.
+# Paths are relative to this file's directory.
+
+agents:
+  cover_letter_generator:
+    name: "Cover Letter Generator"
+    description: "Generates a tailored, professional cover letter from a resume and job description"
+    enabled: true
+    skill: "cover-letter-generator.md"
+    system_prompt: "../prompts/cover_letter_prompt.md"
+
+  cv_extractor:
+    name: "CV Extractor"
+    description: "Extracts and tailors CV content to job descriptions"
+    enabled: true
+    skill: "cv-extractor.md"
+    system_prompt: "../prompts/cv_extractor_prompt.md"
+
+  startup_scanner:
+    name: "Startup Scanner"
+    description: "Scans startup career pages and extracts relevant AI/ML job openings"
+    enabled: true
+    system_prompt: "../prompts/job_extraction_prompt.md"
+
+  job_finder:
+    name: "Job Finder"
+    description: "Finds AI/ML job listings matching user profile"
+    enabled: true
+    skill: "job-finder.md"
+    system_prompt: "../prompts/job_finder_prompt.md"
+
+  resume_reviewer:
+    name: "Resume Reviewer"
+    description: "Reviews and rewrites resume bullets using XYZ formula"
+    enabled: true
+    skill: "resume-reviewer.md"
+    system_prompt: "../prompts/resume_reviewer_prompt.md"
+
+  resume_tailor:
+    name: "Resume Tailor"
+    description: "Tailors a resume to a specific job description"
+    enabled: true
+    system_prompt: "../prompts/resume_tailor_prompt.md"
+
+  outreach_agent:
+    name: "Outreach Agent"
+    description: "Generates follow-up emails, thank-you notes, cold outreach, and referral requests"
+    enabled: true
+    skill: "outreach-agent.md"
+    system_prompt: "../prompts/outreach_prompt.md"
+
+  interview_coach:
+    name: "Interview Coach"
+    description: "Generates interview prep: behavioral questions, technical topics, STAR stories"
+    enabled: true
+    skill: "interview-coach.md"
+    system_prompt: "../prompts/interview_coach_prompt.md"

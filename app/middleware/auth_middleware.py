@@ -1,6 +1,5 @@
 """Auth middleware for FastAPI dependency injection."""
 
-from typing import Optional
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -12,7 +11,7 @@ security = HTTPBearer(auto_error=False)
 
 
 async def get_current_user_dependency(
-    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
+    credentials: HTTPAuthorizationCredentials | None = Depends(security),
 ) -> User:
     if credentials is None:
         raise HTTPException(
@@ -32,8 +31,8 @@ async def get_current_user_dependency(
 
 
 async def optional_user_dependency(
-    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
-) -> Optional[User]:
+    credentials: HTTPAuthorizationCredentials | None = Depends(security),
+) -> User | None:
     if credentials is None:
         return None
     try:

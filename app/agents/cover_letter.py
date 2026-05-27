@@ -1,82 +1,119 @@
-"""Cover Letter Generation Agent — Pydantic AI Agent."""
-
-from pathlib import Path
-from typing import Optional
+"""Cover Letter Generation Agent."""
 
 from loguru import logger
 from pydantic import BaseModel, Field
 
+from app.agents.base_agent import BaseAgent
+from app.pipelines.state import PipelineState
+
 
 class CoverLetterOutput(BaseModel):
-    """Output from the cover letter generation agent."""
-
+    """Output from the cover letter generator."""
+    
     cover_letter: str
     key_highlights: list[str] = Field(default_factory=list)
     tone: str = "professional"
 
 
-def _create_cover_letter_agent():
-    """Create the Pydantic AI agent for cover letter generation."""
-    try:
-        from app.core.model_registry import create_agent
-
-        prompt_path = Path(__file__).parent.parent / "prompts" / "cover_letter_prompt.md"
-        system_prompt = (
-            prompt_path.read_text(encoding="utf-8")
-            if prompt_path.exists()
-            else "Generate a professional cover letter."
-        )
-
-        return create_agent(
-            output_type=CoverLetterOutput,
-            system_prompt=system_prompt,
-        )
-    except Exception as e:
-        logger.error(f"Failed to create cover letter agent: {e}")
-        return None
-
-
-cover_letter_agent = _create_cover_letter_agent()
+class CoverLetterAgent(BaseAgent):
+    """Generates tailored cover letters from resume and job description."""
+    
+    output_type = CoverLetterOutput
+    
+    async def execute(self, state: PipelineState) -> None:
+        """Pipeline integration: generate cover letter and store in artifacts."""
+        result = await self.generate(state.get_resume_text(), state.job_text)
+        state.artifacts["cover_letter_generator"] = result
+    
+    async def generate(
+        self,
+        resume_text: str,
+        job_text: str,
+        company_name: str | None = None,
+        hiring_manager: str | None = None,
+    ) -> CoverLetterOutput:
+        """Generate a cover letter.
+        
+        Args:
+            resume_text: The candidate's resume text
+            job_text: The job description text
+            company_name: Optional company name for personalization
+            hiring_manager: Optional hiring manager name
+            
+        Returns:
+            CoverLetterOutput with generated letter and highlights
+        """
+        if not self._agent:
+            return CoverLetterOutput(
+                cover_letter="Error: Cover letter agent not available.",
+                key_highlights=[],
+                tone="professional",
+            )
+        
+        prompt = self._build_prompt(resume_text, job_text, company_name, hiring_manager)
+        
+        try:
+            result = await self._agent.run(prompt)
+            return result.output
+        except Exception as e:
+            logger.error(f"Cover letter generation failed: {e}")
+            return CoverLetterOutput(
+                cover_letter=f"Error generating cover letter: {e}",
+                key_highlights=[],
+                tone="professional",
+            )
+    
+    def _build_prompt(
+        self,
+        resume_text: str,
+        job_text: str,
+        company_name: str | None,
+        hiring_manager: str | None,
+    ) -> str:
+        """Build the user prompt for cover letter generation."""
+        parts = [
+            "Generate a tailored cover letter based on the following resume and job description.",
+            "",
+            "## Resume",
+            resume_text[:6000],
+            "",
+            "## Job Description",
+            job_text[:4000],
+        ]
+        
+        if company_name:
+            parts.append(f"\nCompany: {company_name}")
+        if hiring_manager:
+            parts.append(f"Hiring Manager: {hiring_manager}")
+        
+        return "\n".join(parts)
 
 
 async def generate_cover_letter(
     resume_text: str,
     job_text: str,
-    company_name: Optional[str] = None,
-    hiring_manager: Optional[str] = None,
+    company_name: str | None = None,
+    hiring_manager: str | None = None,
 ) -> CoverLetterOutput:
-    """Generate a cover letter from a resume and job description.
-
+    """Convenience function: generate a cover letter.
+    
     Args:
-        resume_text: Raw resume text.
-        job_text: Raw job description text.
-        company_name: Target company name (optional).
-        hiring_manager: Hiring manager name (optional).
-
+        resume_text: The candidate's resume text
+        job_text: The job description text
+        company_name: Optional company name
+        hiring_manager: Optional hiring manager name
+        
     Returns:
-        CoverLetterOutput with cover letter, highlights, and tone.
+        CoverLetterOutput with generated letter and highlights
     """
-    if not cover_letter_agent:
-        logger.error("Cover letter agent not available")
+    from app.agents.base_agent import get_agent
+    
+    agent = get_agent("cover_letter_generator")
+    if agent is None:
         return CoverLetterOutput(
-            cover_letter="Error: Cover letter agent not available. Check LLM configuration.",
+            cover_letter="Error: Cover letter agent not available.",
             key_highlights=[],
+            tone="professional",
         )
-
-    prompt = f"""Generate a cover letter for this job application.
-
---- RESUME ---
-{resume_text[:6000]}
-
---- JOB DESCRIPTION ---
-{job_text[:4000]}
-
-{f"Company: {company_name}" if company_name else ""}
-{f"Hiring Manager: {hiring_manager}" if hiring_manager else ""}
-"""
-    try:
-        result = await cover_letter_agent.run(prompt)
-        return result.output
-    except Exception as e:
-        logger.error(f"Cover letter generation failed: {e}")
-        return CoverLetterOutput(cover_letter=f"Error: {e}", key_highlights=[])
+    
+    return await agent.generate(resume_text, job_text, company_name, hiring_manager)

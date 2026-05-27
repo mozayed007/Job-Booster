@@ -2,7 +2,6 @@
 
 import re
 from pathlib import Path
-from typing import List, Optional
 
 from loguru import logger
 
@@ -25,7 +24,7 @@ CATEGORY_MAP = {
 }
 
 
-def _extract_link(cell: str) -> Optional[str]:
+def _extract_link(cell: str) -> str | None:
     """Extract URL from markdown link: [Link](url) or [Name](url)"""
     match = re.search(r"\[(?:Link|[^\]]+)\]\(([^)]+)\)", cell)
     return match.group(1) if match else None
@@ -38,7 +37,7 @@ def _clean_cell(cell: str) -> str:
     return cell.strip()
 
 
-def _parse_table_row(row: str, city: str, category: str) -> Optional[Startup]:
+def _parse_table_row(row: str, city: str, category: str) -> Startup | None:
     """Parse a single markdown table row into a Startup object."""
     # Split by pipe, remove empty first/last
     cells = [c.strip() for c in row.split("|")][1:-1]
@@ -79,7 +78,7 @@ def _parse_table_row(row: str, city: str, category: str) -> Optional[Startup]:
         return None
 
 
-def parse_startups_file(filepath: Optional[Path] = None) -> List[Startup]:
+def parse_startups_file(filepath: Path | None = None) -> list[Startup]:
     """
     Parse the startups.md file and return a list of Startup objects.
 
@@ -101,7 +100,7 @@ def parse_startups_file(filepath: Optional[Path] = None) -> List[Startup]:
     content = filepath.read_text(encoding="utf-8")
     lines = content.split("\n")
 
-    startups: List[Startup] = []
+    startups: list[Startup] = []
     current_city = ""
     current_category = ""
 
@@ -134,28 +133,28 @@ def parse_startups_file(filepath: Optional[Path] = None) -> List[Startup]:
     return startups
 
 
-def get_startups_by_city(startups: List[Startup]) -> dict[str, List[Startup]]:
+def get_startups_by_city(startups: list[Startup]) -> dict[str, list[Startup]]:
     """Group startups by city."""
-    result: dict[str, List[Startup]] = {}
+    result: dict[str, list[Startup]] = {}
     for s in startups:
         result.setdefault(s.city, []).append(s)
     return result
 
 
-def get_startups_by_category(startups: List[Startup]) -> dict[str, List[Startup]]:
+def get_startups_by_category(startups: list[Startup]) -> dict[str, list[Startup]]:
     """Group startups by category."""
-    result: dict[str, List[Startup]] = {}
+    result: dict[str, list[Startup]] = {}
     for s in startups:
         result.setdefault(s.category, []).append(s)
     return result
 
 
 def filter_startups(
-    startups: List[Startup],
-    cities: Optional[List[str]] = None,
-    categories: Optional[List[str]] = None,
+    startups: list[Startup],
+    cities: list[str] | None = None,
+    categories: list[str] | None = None,
     with_website_only: bool = True,
-) -> List[Startup]:
+) -> list[Startup]:
     """
     Filter startups by criteria.
 

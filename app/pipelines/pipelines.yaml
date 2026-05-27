@@ -1,0 +1,69 @@
+# Pipeline configuration registry — loaded by PipelineEngine
+# Each pipeline defines an ordered sequence of agent steps.
+# Paths are relative to this file's directory.
+
+pipelines:
+  full_application:
+    name: "Full Job Application Pipeline"
+    description: "End-to-end: CV extraction, resume review, cover letter, and job search"
+    enabled: true
+    steps:
+      - agent: cv_extractor
+        description: "Extract CV and tailor resume to job description"
+      - agent: resume_reviewer
+        description: "Review and polish resume bullets using XYZ formula"
+      - agent: cover_letter_generator
+        description: "Generate tailored cover letter"
+      - agent: job_finder
+        description: "Find matching job opportunities"
+
+  resume_only:
+    name: "Resume Tailoring Only"
+    description: "CV extraction and resume review without cover letter or job search"
+    enabled: true
+    steps:
+      - agent: cv_extractor
+        description: "Extract CV and tailor resume to job description"
+      - agent: resume_reviewer
+        description: "Review and polish resume bullets using XYZ formula"
+
+  daily_scanner:
+    name: "Daily Startup Scanner"
+    description: "Scan startup career pages for relevant AI/ML job openings"
+    enabled: true
+    schedule: "0 9 * * *"
+    steps:
+      - agent: startup_scanner
+        description: "Scan startup career pages and extract job openings"
+
+  cover_letter_only:
+    name: "Cover Letter Generation"
+    description: "Generate a cover letter from existing resume and job description"
+    enabled: true
+    steps:
+      - agent: cover_letter_generator
+        description: "Generate tailored cover letter"
+
+  job_search_only:
+    name: "Job Search Only"
+    description: "Find job opportunities matching a resume"
+    enabled: true
+    steps:
+      - agent: job_finder
+        description: "Find matching job opportunities"
+
+  outreach:
+    name: "Post-Application Outreach"
+    description: "Generate follow-up, thank-you, cold outreach, and referral messages"
+    enabled: true
+    steps:
+      - agent: outreach_agent
+        description: "Generate outreach messages based on resume and job description"
+
+  interview_prep:
+    name: "Interview Preparation"
+    description: "Generate behavioral questions, technical topics, and STAR stories"
+    enabled: true
+    steps:
+      - agent: interview_coach
+        description: "Generate tailored interview coaching material"

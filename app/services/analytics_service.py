@@ -1,7 +1,7 @@
 """Analytics dashboard service for Job_Booster."""
 
 from collections import Counter
-from typing import Any, Optional
+from typing import Any
 
 from loguru import logger
 from sqlalchemy import func
@@ -111,7 +111,7 @@ class AnalyticsService:
             logger.error(f"Error computing matching stats: {e}")
             return {"total_matches": 0, "average_score": 0, "max_score": 0, "min_score": 0}
 
-    def get_application_funnel(self, user_id: Optional[int] = None) -> dict[str, Any]:
+    def get_application_funnel(self, user_id: int | None = None) -> dict[str, Any]:
         try:
             db = self.db_service.db
             query = db.query(ApplicationDB.status, func.count(ApplicationDB.id))
@@ -201,7 +201,7 @@ class AnalyticsService:
             logger.error(f"Error computing scanner stats: {e}")
             return {"total_startups": 0, "total_scanned_jobs": 0, "jobs_applied": 0}
 
-    def get_dashboard_data(self, user_id: Optional[int] = None) -> dict[str, Any]:
+    def get_dashboard_data(self, user_id: int | None = None) -> dict[str, Any]:
         return {
             "resumes": self.get_resume_stats(),
             "jobs": self.get_job_stats(),
@@ -212,7 +212,7 @@ class AnalyticsService:
         }
 
 
-def get_analytics_service(db_service: Optional[DatabaseService] = None) -> AnalyticsService:
+def get_analytics_service(db_service: DatabaseService | None = None) -> AnalyticsService:
     if db_service is None:
         db = get_db_session()
         db_service = DatabaseService(db)

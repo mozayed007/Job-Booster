@@ -2,7 +2,6 @@
 
 import logging
 from contextlib import asynccontextmanager
-from typing import Dict
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -10,13 +9,16 @@ from loguru import logger
 
 from app.api.analytics_routes import router as analytics_router
 from app.api.auth_routes import router as auth_router
+from app.api.dashboard_routes import router as dashboard_router
+from app.api.discovery_routes import router as discovery_router
+from app.api.pipeline_routes import router as pipeline_router
 from app.api.recommendation_routes import router as recommendation_router
 from app.api.resume_routes import router as resume_router
 from app.api.scanner_routes import router as scanner_router
 from app.api.search_routes import router as search_router
 from app.api.tracking_routes import router as tracking_router
 from app.core.config import settings
-from app.core.llm_config import init_ai_stack
+from app.core.model_registry import get_registry, init_ai_stack
 from app.services.db_service import initialize_database_tables
 
 
@@ -28,6 +30,9 @@ async def lifespan(app: FastAPI):
     initialize_database_tables()
     try:
         init_ai_stack()
+        # Probe local providers async (Ollama, vLLM) — avoids blocking
+        # the event loop with synchronous HTTP calls at import time.
+        await get_registry().probe_local_providers()
     except Exception as e:
         logger.warning(f"AI stack init failed (non-fatal): {e}")
     logger.info("Job_Booster API ready")
@@ -49,7 +54,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=settings.CORS_ORIGINS.split(",") if settings.CORS_ORIGINS != "*" else ["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -62,10 +67,13 @@ app.include_router(auth_router, prefix="/api")
 app.include_router(recommendation_router, prefix="/api")
 app.include_router(tracking_router, prefix="/api")
 app.include_router(analytics_router, prefix="/api")
+app.include_router(pipeline_router, prefix="/api")
+app.include_router(discovery_router, prefix="/api")
+app.include_router(dashboard_router, prefix="/api")
 
 
 @app.get("/", tags=["Health"])
-async def root() -> Dict[str, str]:
+async def root() -> dict[str, str]:
     """Root endpoint with API info."""
     return {
         "name": "Job_Booster API",
@@ -75,7 +83,7 @@ async def root() -> Dict[str, str]:
 
 
 @app.get("/health", tags=["Health"])
-async def health_check() -> Dict[str, str]:
+async def health_check() -> dict[str, str]:
     """Health check endpoint."""
     return {"status": "healthy"}
 

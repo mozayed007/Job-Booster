@@ -6,10 +6,12 @@ Handles text extraction (PDF, DOCX, MD, TXT, LaTeX) and LLM-based structured par
 import io
 import re
 from pathlib import Path
-from typing import Optional
 
 import docx
 from loguru import logger
+
+from app.models.job_model import JobPosting
+from app.models.resume_model import Resume
 
 # Resolve prompt directory relative to this file
 _PROMPTS_DIR = Path(__file__).parent.parent / "prompts"
@@ -30,11 +32,6 @@ try:
 except Exception:
     GLMOCR_AVAILABLE = False
     glmocr_parse = None
-
-from app.models.job_model import JobPosting
-from app.models.resume_model import (
-    Resume,
-)
 
 
 def _extract_latex_text(tex_content: str) -> str:
@@ -214,7 +211,7 @@ class ParserLLM:
 class ResumeParser:
     """Parser for resume documents."""
 
-    def __init__(self, llm_client: Optional[ParserLLM] = None):
+    def __init__(self, llm_client: ParserLLM | None = None):
         self.llm_client = llm_client or ParserLLM()
 
     async def parse_resume_file_content(self, file_content: bytes, filename: str) -> Resume:
@@ -241,7 +238,7 @@ class ResumeParser:
 class JobParser:
     """Parser for job description documents/text."""
 
-    def __init__(self, llm_client: Optional[ParserLLM] = None):
+    def __init__(self, llm_client: ParserLLM | None = None):
         self.llm_client = llm_client or ParserLLM()
 
     async def parse_job_text(self, job_text: str) -> JobPosting:
