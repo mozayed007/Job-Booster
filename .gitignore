@@ -67,6 +67,9 @@ local_settings.py
 Hackathon_MVP_Plan.md
 scanner_state.json
 
+# Planning / IDE artifacts
+.kilo/
+
 # Generated output resumes (user-specific, do not commit)
 data/resumes/output/*
 !data/resumes/output/.gitkeep
