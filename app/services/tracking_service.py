@@ -1,6 +1,6 @@
 """Application tracking service for managing job applications."""
 
-from typing import Any, Optional
+from typing import Any
 
 from loguru import logger
 from sqlalchemy import func
@@ -15,7 +15,7 @@ class ApplicationTracker:
     def __init__(self, db_service: DatabaseService):
         self.db_service = db_service
 
-    def track_application(self, data: dict[str, Any]) -> Optional[int]:
+    def track_application(self, data: dict[str, Any]) -> int | None:
         status = data.get("status", "applied")
         if status not in VALID_STATUSES:
             logger.warning(f"Invalid status '{status}', defaulting to 'applied'")
@@ -26,7 +26,7 @@ class ApplicationTracker:
             logger.info(f"Tracked application id={record_id}")
         return record_id
 
-    def update_status(self, app_id: int, status: str, notes: Optional[str] = None) -> bool:
+    def update_status(self, app_id: int, status: str, notes: str | None = None) -> bool:
         if status not in VALID_STATUSES:
             logger.error(f"Invalid status: {status}")
             return False
@@ -49,8 +49,8 @@ class ApplicationTracker:
 
     def get_applications(
         self,
-        user_id: Optional[int] = None,
-        status: Optional[str] = None,
+        user_id: int | None = None,
+        status: str | None = None,
         limit: int = 100,
         offset: int = 0,
     ) -> list[dict[str, Any]]:
@@ -67,7 +67,7 @@ class ApplicationTracker:
             logger.error(f"Error fetching applications: {e}")
             return []
 
-    def get_application_stats(self, user_id: Optional[int] = None) -> dict[str, Any]:
+    def get_application_stats(self, user_id: int | None = None) -> dict[str, Any]:
         try:
             db = self.db_service.db
             query = db.query(ApplicationDB)
@@ -127,7 +127,7 @@ class ApplicationTracker:
         }
 
 
-def get_application_tracker(db_service: Optional[DatabaseService] = None) -> ApplicationTracker:
+def get_application_tracker(db_service: DatabaseService | None = None) -> ApplicationTracker:
     if db_service is None:
         db = get_db_session()
         db_service = DatabaseService(db)

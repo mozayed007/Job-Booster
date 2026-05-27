@@ -1,6 +1,5 @@
 """API models for Job_Booster application."""
 
-from typing import Optional
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -13,14 +12,14 @@ from .resume_model import Resume
 class ResumeParseResponse(BaseResponse):
     """Response model for resume parsing."""
 
-    data: Optional[Resume] = None
-    resume_version_id: Optional[int] = None
+    data: Resume | None = None
+    resume_version_id: int | None = None
 
 
 class JobParseResponse(BaseResponse):
     """Response model for job posting parsing."""
 
-    data: Optional[JobPosting] = None
+    data: JobPosting | None = None
 
 
 class JobTextRequest(BaseModel):
@@ -32,10 +31,10 @@ class JobTextRequest(BaseModel):
 class AnalysisRequest(BaseModel):
     """Request model for resume-job analysis."""
 
-    resume_text: Optional[str] = None
-    resume_id: Optional[UUID] = None
-    job_text: Optional[str] = None
-    job_id: Optional[UUID] = None
+    resume_text: str | None = None
+    resume_id: UUID | None = None
+    job_text: str | None = None
+    job_id: UUID | None = None
 
 
 class SkillMatch(BaseModel):
@@ -52,7 +51,7 @@ class ExperienceMatch(BaseModel):
 
     requirement: str
     met: bool
-    evidence: Optional[str] = None
+    evidence: str | None = None
 
 
 class AnalysisData(BaseModel):
@@ -69,7 +68,7 @@ class AnalysisData(BaseModel):
 class AnalysisResponse(BaseResponse):
     """Response model for resume-job analysis."""
 
-    data: Optional[AnalysisData] = None
+    data: AnalysisData | None = None
 
 
 class TailoredResumeRequest(BaseModel):
@@ -91,7 +90,7 @@ class TailoredResumeData(BaseModel):
 class TailoredResumeResponse(BaseResponse):
     """Response model for tailored resume generation."""
 
-    data: Optional[TailoredResumeData] = None
+    data: TailoredResumeData | None = None
 
 
 class CoverLetterRequest(BaseModel):
@@ -99,8 +98,8 @@ class CoverLetterRequest(BaseModel):
 
     resume_text: str
     job_text: str
-    company_name: Optional[str] = None
-    hiring_manager: Optional[str] = None
+    company_name: str | None = None
+    hiring_manager: str | None = None
 
 
 class CoverLetterData(BaseModel):
@@ -114,7 +113,7 @@ class CoverLetterData(BaseModel):
 class CoverLetterResponse(BaseResponse):
     """Response model for cover letter generation."""
 
-    data: Optional[CoverLetterData] = None
+    data: CoverLetterData | None = None
 
 
 class RegisterRequest(BaseModel):
@@ -131,10 +130,10 @@ class LoginRequest(BaseModel):
 class AuthResponse(BaseModel):
     success: bool = True
     message: str = ""
-    token: Optional[str] = None
-    user: Optional[dict] = None
+    token: str | None = None
+    user: dict | None = None
 
 
 class UserProfileResponse(BaseModel):
     success: bool = True
-    user: Optional[dict] = None
+    user: dict | None = None

@@ -1,58 +1,87 @@
-"""Resume Tailoring Agent — Pydantic AI Agent + Graph workflow."""
-
-from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
+"""Resume Tailor Agent — tailors resumes to specific job descriptions."""
 
 from loguru import logger
 from pydantic import BaseModel, Field
 
-from app.models.job_model import JobPosting
-from app.models.resume_model import Resume
+from app.agents.base_agent import BaseAgent
+from app.pipelines.state import PipelineState
 
 
 class TailoredResumeOutput(BaseModel):
-    """Output from the resume tailoring agent."""
-
+    """Output from the resume tailor."""
+    
     tailored_content: str
-    improvements: List[str] = Field(default_factory=list)
+    improvements: list[str] = Field(default_factory=list)
     format_type: str = "text"
 
 
-@dataclass
-class WorkflowState:
-    """State for the resume tailoring graph workflow."""
+class ResumeTailorAgent(BaseAgent):
+    """Tailors a resume to a specific job description."""
+    
+    output_type = TailoredResumeOutput
+    
+    async def execute(self, state: PipelineState) -> None:
+        """Pipeline integration: tailor resume and store in artifacts."""
+        result = await self.tailor(state.resume_text, state.job_text)
+        state.artifacts["resume_tailor"] = result
+    
+    async def tailor(
+        self,
+        resume_text: str,
+        job_text: str,
+        format_type: str = "text",
+    ) -> TailoredResumeOutput:
+        """Tailor a resume to a job description.
+        
+        Args:
+            resume_text: Raw resume text
+            job_text: Job description text
+            format_type: Output format (text, markdown, latex)
+            
+        Returns:
+            TailoredResumeOutput with tailored content and improvements
+        """
+        if not self._agent:
+            return TailoredResumeOutput(
+                tailored_content="Error: Resume tailor agent not available.",
+                improvements=[],
+                format_type=format_type,
+            )
+        
+        prompt = self._build_prompt(resume_text, job_text, format_type)
+        
+        try:
+            result = await self._agent.run(prompt)
+            output = result.output
+            output.format_type = format_type
+            return output
+        except Exception as e:
+            logger.error(f"Resume tailoring failed: {e}")
+            return TailoredResumeOutput(
+                tailored_content=f"Error tailoring resume: {e}",
+                improvements=[],
+                format_type=format_type,
+            )
+    
+    def _build_prompt(self, resume_text: str, job_text: str, format_type: str) -> str:
+        """Build the user prompt for resume tailoring."""
+        return f"""Tailor the following resume to match the job description.
 
-    resume_text: str = ""
-    job_text: str = ""
-    resume: Optional[Resume] = None
-    job: Optional[JobPosting] = None
-    match_analysis: Optional[Dict[str, Any]] = None
-    tailored: Optional[TailoredResumeOutput] = None
+## Resume
+{resume_text[:6000]}
 
+## Job Description
+{job_text[:4000]}
 
-def _create_tailor_agent():
-    """Create the Pydantic AI agent for resume tailoring."""
-    try:
-        from app.core.model_registry import create_agent
-
-        return create_agent(
-            output_type=TailoredResumeOutput,
-            system_prompt="""You are an expert resume tailor. Given a resume and job description:
-
-1. Identify skills and experiences that match the job requirements
+## Instructions
+1. Identify key requirements and skills from the job description
 2. Reorder and emphasize relevant experience
-3. Enhance bullet points to use action verbs and quantifiable achievements
-4. Add missing keywords naturally where the candidate likely has the skill
+3. Enhance bullet points using the XYZ formula where possible
+4. Add relevant keywords naturally
 5. Maintain truthfulness — do not fabricate experience
 
-Return the tailored resume as clean text, and list the specific improvements made.""",
-        )
-    except Exception as e:
-        logger.error(f"Failed to create tailor agent: {e}")
-        return None
-
-
-tailor_agent = _create_tailor_agent()
+Output format: {format_type}
+"""
 
 
 async def tailor_resume(
@@ -60,93 +89,27 @@ async def tailor_resume(
     job_text: str,
     format_type: str = "text",
 ) -> TailoredResumeOutput:
-    """Tailor a resume to a job description.
-
+    """Convenience function: tailor a resume to a job description.
+    
     Args:
-        resume_text: Raw resume text.
-        job_text: Raw job description text.
-        format_type: Output format (text, html, latex).
-
+        resume_text: Raw resume text
+        job_text: Job description text
+        format_type: Output format (text, markdown, latex)
+        
     Returns:
-        TailoredResumeOutput with tailored content and improvements.
+        TailoredResumeOutput with tailored content and improvements
     """
-    if not tailor_agent:
-        logger.error("Tailor agent not available")
+    from app.agents.base_agent import get_agent
+    
+    agent = get_agent("resume_tailor")
+    if agent is None:
         return TailoredResumeOutput(
-            tailored_content="Error: Resume tailoring agent not available. Check LLM configuration.",
-            improvements=["Agent initialization failed"],
-            format_type=format_type,
-        )
-
-    prompt = f"""Tailor this resume for the following job description.
-
-Output format: {format_type}
-
---- RESUME ---
-{resume_text[:6000]}
-
---- JOB DESCRIPTION ---
-{job_text[:4000]}
-"""
-
-    try:
-        result = await tailor_agent.run(prompt)
-        output = result.output
-        output.format_type = format_type
-        return output
-    except Exception as e:
-        logger.error(f"Resume tailoring failed: {e}")
-        return TailoredResumeOutput(
-            tailored_content=f"Error during tailoring: {e}",
+            tailored_content="Error: Resume tailor agent not available.",
             improvements=[],
             format_type=format_type,
         )
+    
+    return await agent.tailor(resume_text, job_text, format_type)
 
 
-async def run_tailor_graph(
-    resume_text: str,
-    job_text: str,
-    format_type: str = "text",
-) -> TailoredResumeOutput:
-    """Run the full tailoring workflow.
 
-    Uses the graph pattern if pydantic-graph is available,
-    otherwise falls back to direct agent call.
-    """
-    try:
-        from pydantic_graph import BaseNode, End, Graph, GraphRunContext
-
-        @dataclass
-        class ParseInput(BaseNode[WorkflowState]):
-            async def run(self, ctx: GraphRunContext[WorkflowState]) -> "GenerateTailored":
-                ctx.state.resume_text = resume_text
-                ctx.state.job_text = job_text
-                return GenerateTailored()
-
-        @dataclass
-        class GenerateTailored(BaseNode[WorkflowState]):
-            async def run(self, ctx: GraphRunContext[WorkflowState]) -> "ValidateOutput":
-                output = await tailor_resume(
-                    ctx.state.resume_text,
-                    ctx.state.job_text,
-                    format_type,
-                )
-                ctx.state.tailored = output
-                return ValidateOutput()
-
-        @dataclass
-        class ValidateOutput(BaseNode[WorkflowState, None, TailoredResumeOutput]):
-            async def run(self, ctx: GraphRunContext[WorkflowState]) -> End[TailoredResumeOutput]:
-                return End(ctx.state.tailored)
-
-        tailor_graph = Graph(nodes=[ParseInput, GenerateTailored, ValidateOutput])
-        state = WorkflowState()
-        result = await tailor_graph.run(ParseInput(), state=state)
-        return result.output
-
-    except ImportError:
-        logger.info("pydantic-graph not available, using direct agent call")
-        return await tailor_resume(resume_text, job_text, format_type)
-    except Exception as e:
-        logger.warning(f"Graph execution failed ({e}), falling back to direct call")
-        return await tailor_resume(resume_text, job_text, format_type)

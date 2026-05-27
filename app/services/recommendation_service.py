@@ -1,6 +1,6 @@
 """Job recommendation engine using vector similarity + skill analysis."""
 
-from typing import Any, Optional
+from typing import Any
 
 from loguru import logger
 
@@ -12,7 +12,7 @@ class RecommendationService:
     def __init__(
         self,
         search_service: SearchService,
-        db_service: Optional[DatabaseService] = None,
+        db_service: DatabaseService | None = None,
     ):
         self.search_service = search_service
         self.db_service = db_service
@@ -110,7 +110,7 @@ class RecommendationService:
             "related_suggestions": related[:10],
         }
 
-    def _get_record(self, table: str, record_id: int) -> Optional[dict[str, Any]]:
+    def _get_record(self, table: str, record_id: int) -> dict[str, Any] | None:
         if not self.db_service:
             return None
         try:
@@ -221,8 +221,8 @@ class RecommendationService:
 
 
 def get_recommendation_service(
-    search_service: Optional[SearchService] = None,
-    db_service: Optional[DatabaseService] = None,
+    search_service: SearchService | None = None,
+    db_service: DatabaseService | None = None,
 ) -> RecommendationService:
     if search_service is None:
         from app.services.search_service import get_search_service

@@ -3,38 +3,51 @@
 ## High-Level Architecture
 
 ```
-                           ┌─────────────────────────────┐
-                           │       Gradio UI (8050)       │
-                           │     app/frontend.py          │
-                           └──────────────┬───────────────┘
-                                          │ HTTP
-                           ┌──────────────▼───────────────┐
-                           │     FastAPI Application       │
-                           │        app/main.py            │
-                           │                              │
-                           │  ┌───────────────────────┐   │
-                           │  │    API Routes (7)      │   │
-                           │  │  app/api/*.py          │   │
-                           │  └───────────┬───────────┘   │
-                           │              │               │
-                           │  ┌───────────▼───────────┐   │
-                           │  │    AI Agents (3)       │   │
-                           │  │  app/agents/*.py       │   │
-                           │  └───────────┬───────────┘   │
-                           │              │               │
-           ┌───────────────┼──────────────┼───────────────┼───────────────┐
-           │               │              │               │               │
-    ┌──────▼──────┐ ┌──────▼──────┐ ┌────▼─────┐ ┌──────▼──────┐ ┌──────▼──────┐
-    │ LLM Service │ │ Parse Svc   │ │ DB Svc   │ │ Vector Store│ │ Scraper Svc │
-    │ (LiteLLM)   │ │(LiteParse/  │ │(SQLAlch.)│ │  (Qdrant)   │ │(TinyFish/   │
-    │             │ │ GLM-OCR)    │ │          │ │             │ │ Crawl4AI)   │
-    └──────┬──────┘ └─────────────┘ └────┬─────┘ └──────┬──────┘ └─────────────┘
-           │                             │               │
-    ┌──────▼──────┐               ┌──────▼──────┐ ┌──────▼──────┐
-    │  LiteLLM    │               │   SQLite    │ │  Qdrant     │
-    │  Providers  │               │  (file DB)  │ │  (file DB)  │
-    │ (100+ LLMs) │               │             │ │             │
-    └─────────────┘               └─────────────┘ └─────────────┘
+                            ┌─────────────────────────────┐
+                            │       Gradio UI (8050)       │
+                            │     app/frontend.py          │
+                            └──────────────┬───────────────┘
+                                           │ HTTP
+                            ┌──────────────▼───────────────┐
+                            │     FastAPI Application       │
+                            │        app/main.py            │
+                            │                              │
+                            │  ┌───────────────────────┐   │
+                            │  │   API Routes (10)      │   │
+                            │  │   app/api/*.py         │   │
+                            │  └───────────┬───────────┘   │
+                            │              │               │
+                            │  ┌───────────▼───────────┐   │
+                            │  │  Pipeline Engine       │   │
+                            │  │  app/pipelines/        │   │
+                             │  │  (plain async loops)    │   │
+                            │  └───────────┬───────────┘   │
+                            │              │               │
+                            │  ┌───────────▼───────────┐   │
+                            │  │  Config-Driven Agents  │   │
+                            │  │  agents.yaml (6 agents)│   │
+                            │  │  app/agents/*.py       │   │
+                            │  └───────────┬───────────┘   │
+                            │              │               │
+            ┌───────────────┼──────────────┼───────────────┼───────────────┐
+            │               │              │               │               │
+     ┌──────▼──────┐ ┌──────▼──────┐ ┌────▼─────┐ ┌──────▼──────┐ ┌──────▼──────┐
+     │ LLM Service │ │ Parse Svc   │ │ DB Svc   │ │ Vector Store│ │ Scraper Svc │
+     │ (LiteLLM)   │ │(LiteParse/  │ │(SQLAlch.)│ │  (Qdrant)   │ │(TinyFish/   │
+     │             │ │ GLM-OCR)    │ │          │ │             │ │ Crawl4AI)   │
+     └──────┬──────┘ └─────────────┘ └────┬─────┘ └──────┬──────┘ └─────────────┘
+            │                             │               │
+     ┌──────▼──────┐               ┌──────▼──────┐ ┌──────▼──────┐
+     │  LiteLLM    │               │   SQLite    │ │  Qdrant     │
+     │  Providers  │               │  (file DB)  │ │  (file DB)  │
+     │ (100+ LLMs) │               │             │ │             │
+     └─────────────┘               └─────────────┘ └─────────────┘
+
+     ┌─────────────┐  ┌─────────────┐  ┌─────────────┐
+     │ APScheduler │  │  EventBus   │  │ Export Svc  │
+     │ (cron jobs) │  │ (pipeline   │  │ (DOCX/PDF/  │
+     │             │  │  events)    │  │  LaTeX/HTML)│
+     └─────────────┘  └─────────────┘  └─────────────┘
 ```
 
 ## Tech Stack
@@ -43,8 +56,11 @@
 |---|---|---|
 | Language | Python | 3.10+ |
 | Web Framework | FastAPI | 0.115+ |
-| AI Agents | Pydantic AI + pydantic-graph | 0.2+ |
+| AI Agents | Pydantic AI | 0.2+ |
+| Agent Config | YAML (agents.yaml) | — |
+| Pipeline Config | YAML (pipelines.yaml) | — |
 | LLM Router | LiteLLM | 1.30+ |
+| Scheduling | APScheduler | 3.10+ |
 | Vector DB | Qdrant (file-based) | 1.12+ |
 | ORM | SQLAlchemy | 2.0+ |
 | Frontend | Gradio | 5.0+ |
@@ -68,36 +84,60 @@ app/
 ├── models/                  # Pydantic and SQLAlchemy models
 │   ├── api_models.py        # Request/response models for API endpoints
 │   ├── base_model.py        # Shared base Pydantic models
-│   ├── db_models.py         # SQLAlchemy table definitions (11 tables)
+│   ├── db_models.py         # SQLAlchemy tables (12 tables including pipeline_runs)
 │   ├── job_model.py         # Job description Pydantic model
 │   ├── resume_model.py      # Resume Pydantic model
 │   └── startup_model.py     # Startup and JobOpening Pydantic models
 │
 ├── services/                # Business logic layer
 │   ├── analytics_service.py # Dashboard and statistics aggregation
+│   ├── apply_service.py     # One-click apply pipeline orchestration
 │   ├── auth_service.py      # bcrypt hashing, JWT token creation/validation
-│   ├── career_scraper.py    # Career page scraping logic
+│   ├── career_scraper.py    # Career page scraping logic (legacy)
 │   ├── db_service.py        # SQLAlchemy session management and CRUD
 │   ├── embedding_service.py # LiteLLM embedding generation with hash fallback
-│   ├── export_service.py    # Multi-format export (text, HTML, DOCX, PDF)
-│   ├── llm_service.py       # LiteLLM integration
+│   ├── export_service.py    # Multi-format export (text, HTML, DOCX, PDF, LaTeX)
+│   ├── job_board_scraper.py # External job board scraping
 │   ├── parsing_service.py   # LiteParse + GLM-OCR document parsing
 │   ├── recommendation_service.py # Job/resume recommendations via vector search
-│   ├── scraper_service.py   # Web scraping orchestration
+│   ├── scraper_service.py   # Web scraping orchestration (template method pattern)
 │   ├── search_service.py    # Hybrid search (vector + keyword)
 │   ├── startup_parser.py    # Startup listing extraction from markdown
 │   ├── template_engine.py   # Jinja2 LaTeX template rendering
 │   ├── tracking_service.py  # Application status lifecycle management
 │   └── vector_store.py      # Qdrant file-based vector storage (singleton)
 │
-├── agents/                  # Pydantic AI agent definitions
-│   ├── cover_letter.py      # Cover letter generation agent
-│   ├── resume_tailor.py     # Resume tailoring agent (pydantic-graph)
-│   └── startup_scanner.py   # Startup career page scanning agent
+├── agents/                  # Config-driven Pydantic AI agents
+│   ├── agents.yaml          # Agent configuration registry (8 agents)
+│   ├── base_agent.py        # BaseAgent ABC + AgentConfig + YAML loader
+│   ├── cover_letter.py      # Cover Letter Generator agent
+│   ├── cv_extractor.py      # CV Extractor agent
+│   ├── interview_coach.py   # Interview Coach agent
+│   ├── job_finder.py        # Job Finder agent (+ web_search/web_fetch tools)
+│   ├── outreach_agent.py    # Outreach Agent (+ web_search tool)
+│   ├── resume_reviewer.py   # Resume Reviewer agent
+│   ├── resume_tailor.py     # Resume Tailor agent
+│   ├── startup_scanner.py   # Startup Scanner agent
+│   ├── web_tools.py         # Web search/fetch Pydantic AI tools (TinyFish)
+│   ├── cover-letter-generator.md  # Skill definition
+│   ├── cv-extractor.md            # Skill definition
+│   ├── interview-coach.md         # Skill definition
+│   ├── job-finder.md              # Skill definition
+│   ├── outreach-agent.md          # Skill definition
+│   └── resume-reviewer.md         # Skill definition
+│
+├── pipelines/               # Pipeline orchestration engine
+│   ├── pipelines.yaml       # Pipeline definitions (7 pipelines)
+│   ├── engine.py            # PipelineEngine + PipelineState + AgentNode
+│   ├── events.py            # EventBus for pipeline lifecycle notifications
+│   └── scheduler.py         # APScheduler integration for cron-based execution
 │
 ├── api/                     # FastAPI route modules
 │   ├── analytics_routes.py  # /api/analytics/*
 │   ├── auth_routes.py       # /api/auth/*
+│   ├── dashboard_routes.py  # /api/dashboard/*
+│   ├── discovery_routes.py  # /api/discovery/*
+│   ├── pipeline_routes.py   # /api/pipeline/* (apply, apply/file)
 │   ├── recommendation_routes.py # /api/recommendations/*
 │   ├── resume_routes.py     # /api/parse/*, /api/analyze, /api/tailor, /api/export
 │   ├── scanner_routes.py    # /api/scanner/*
@@ -107,10 +147,17 @@ app/
 ├── middleware/               # FastAPI middleware
 │   └── auth_middleware.py   # JWT token extraction dependency
 │
-├── prompts/                 # LLM prompt templates (Markdown)
-│   ├── cover_letter_prompt.md
-│   ├── job_parser_prompt.md
-│   └── resume_parser_prompt.md
+├── prompts/                 # LLM prompt templates (aligned to skill.md files)
+│   ├── cover_letter_prompt.md    # 4-paragraph structure, XYZ, tone rules
+│   ├── cv_extractor_prompt.md    # Extract + tailor + XYZ + integrity checklist
+│   ├── interview_coach_prompt.md # Behavioral/technical interview prep
+│   ├── job_finder_prompt.md      # Search queries + scoring + visa research (+ web tools)
+│   ├── outreach_prompt.md        # Follow-up, thank-you, cold outreach (+ web search)
+│   ├── resume_reviewer_prompt.md # 6-type diagnosis + XYZ rewriting
+│   ├── resume_tailor_prompt.md   # Resume tailoring instructions
+│   ├── resume_parser_prompt.md   # Structured JSON extraction (for parsing service)
+│   ├── job_parser_prompt.md      # JD structured extraction (for parsing service)
+│   └── job_extraction_prompt.md  # Career page job extraction (for scanner)
 │
 ├── ui/                      # Gradio tab modules
 │   └── scanner_tab.py       # Startup scanner tab component
@@ -119,66 +166,156 @@ app/
 └── main.py                  # FastAPI entry point, router mounting, lifespan
 ```
 
+## Agent Configuration (agents.yaml)
+
+```yaml
+agents:
+  cover_letter_generator:
+    name: "Cover Letter Generator"
+    skill: "cover-letter-generator.md"
+    system_prompt: "../prompts/cover_letter_prompt.md"
+
+  cv_extractor:
+    name: "CV Extractor"
+    skill: "cv-extractor.md"
+    system_prompt: "../prompts/cv_extractor_prompt.md"
+
+  job_finder:
+    name: "Job Finder"
+    skill: "job-finder.md"
+    system_prompt: "../prompts/job_finder_prompt.md"
+
+  resume_reviewer:
+    name: "Resume Reviewer"
+    skill: "resume-reviewer.md"
+    system_prompt: "../prompts/resume_reviewer_prompt.md"
+
+  resume_tailor:
+    name: "Resume Tailor"
+    system_prompt: "../prompts/resume_tailor_prompt.md"
+
+  startup_scanner:
+    name: "Startup Scanner"
+    system_prompt: "../prompts/job_extraction_prompt.md"
+
+  outreach_agent:
+    name: "Outreach Agent"
+    skill: "outreach-agent.md"
+    system_prompt: "../prompts/outreach_prompt.md"
+
+  interview_coach:
+    name: "Interview Coach"
+    skill: "interview-coach.md"
+    system_prompt: "../prompts/interview_coach_prompt.md"
+```
+
+## Pipeline Configuration (pipelines.yaml)
+
+```yaml
+pipelines:
+  full_application:
+    name: "Full Job Application Pipeline"
+    description: "End-to-end: CV extraction, resume review, cover letter, and job search"
+    steps:
+      - agent: cv_extractor
+      - agent: resume_reviewer
+      - agent: cover_letter_generator
+      - agent: job_finder
+
+  resume_only:
+    name: "Resume Tailoring Only"
+    description: "CV extraction and resume review without cover letter or job search"
+    steps:
+      - agent: cv_extractor
+      - agent: resume_reviewer
+
+  daily_scanner:
+    name: "Daily Startup Scanner"
+    description: "Scan startup career pages for relevant AI/ML job openings"
+    schedule: "0 9 * * *"
+    steps:
+      - agent: startup_scanner
+
+  cover_letter_only:
+    name: "Cover Letter Generation"
+    description: "Generate a cover letter from existing resume and job description"
+    steps:
+      - agent: cover_letter_generator
+
+  job_search_only:
+    name: "Job Search Only"
+    description: "Find job opportunities matching a resume"
+    steps:
+      - agent: job_finder
+
+  outreach:
+    name: "Post-Application Outreach"
+    description: "Generate follow-up, thank-you, cold outreach, and referral messages"
+    steps:
+      - agent: outreach_agent
+
+  interview_prep:
+    name: "Interview Preparation"
+    description: "Generate behavioral questions, technical topics, and STAR stories"
+    steps:
+      - agent: interview_coach
+```
+
 ## Data Flow
 
-### Resume Upload and Parsing
+### Full Application Pipeline
 
 ```
-User uploads file (PDF/DOCX/MD/TXT/TEX)
+CV Upload (PDF/DOCX/MD/TEX)
     │
     ▼
-extract_text() — LiteParse for PDF/DOCX, GLM-OCR for scanned images
+CV Extractor Agent
+    ├── Parse CV into structured sections
+    ├── Analyse JD (must-have skills, ATS keywords, responsibilities)
+    ├── Score relevance per bullet (High/Medium/Low)
+    ├── Rewrite selected bullets using XYZ formula
+    └── Output: CVExtractorOutput (tailored_resume, improvements, relevance_summary)
     │
     ▼
-ResumeParser.parse_resume_file_content()
+Resume Reviewer Agent
+    ├── Diagnose each bullet (6 issue types)
+    ├── Rewrite using XYZ formula with action verbs
+    ├── Flag missing metrics with placeholders
+    └── Output: ResumeReviewerOutput (bullet_reviews, health_score, full_rewritten_resume)
     │
     ▼
-LLM structured extraction → Pydantic Resume model (contact, experience, education, skills)
+Cover Letter Agent
+    ├── Analyse both documents (top 3 JD responsibilities, mission language)
+    ├── Write 4-paragraph letter (Hook, Evidence, Fit, Close)
+    ├── Enforce tone rules and banned buzzwords
+    └── Output: CoverLetterOutput (cover_letter, key_highlights, tone)
     │
     ▼
-DatabaseService.store_resume() → resumes + resume_versions tables
+Job Finder Agent
+    ├── Extract candidate profile (top skills, seniority, domain)
+    ├── Generate targeted search queries for credible sources
+    ├── Score listings on 6 criteria
+    ├── Research visa sponsorship per listing
+    └── Output: JobFinderOutput (search_queries, listings, summary)
     │
     ▼
-Return structured JSON to client
+Pipeline Complete → EventBus emits "pipeline_completed"
 ```
 
-### Resume Tailoring
+### Startup Scanner Pipeline (Scheduled)
 
 ```
-Resume file + Job description text
+APScheduler triggers daily at 9 AM
     │
     ▼
-extract_text() → resume_text
-    │
-    ▼
-run_tailor_graph(resume_text, job_text, format_type)
-    │  ├── pydantic-graph workflow nodes
-    │  ├── LLM analysis of resume vs job
-    │  └── Type-safe TailorResult output
-    ▼
-Tailored resume content + improvements list
-    │
-    ▼ (optional)
-Template engine → LaTeX .tex file
-    │
-    ▼ (optional)
-Export service → HTML/DOCX/PDF
-```
-
-### Startup Scanner
-
-```
-Startups loaded from data/startups/startups.md
-    │
-    ▼
-StartupScannerAgent.process_batch(batch_size)
-    │  ├── For each startup with a website:
-    │  │   ├── TinyFish/Crawl4AI scrapes career page
-    │  │   ├── LLM extracts job listings
-    │  │   └── Relevance scoring
-    │  └── State persisted to scanner_state table
-    ▼
-ScannedJobDB entries stored with relevance_score
+Startup Scanner Agent
+    ├── Load startups from data/startups/startups.md
+    ├── For each startup with a website:
+    │   ├── TinyFish/Crawl4AI scrapes career page
+    │   ├── LLM extracts job listings
+    │   └── Relevance scoring
+    ├── State persisted to scanner_state table
+    └── Output: list[JobOpening] with relevance_score
     │
     ▼
 Top jobs ranked by relevance_score
@@ -212,119 +349,34 @@ Top jobs ranked by relevance_score
 └─────────────────────────────────────────────────────┘
 ```
 
-**Priority order (cloud-first default):**
-Google > OpenAI > Anthropic > Groq > OpenRouter > Together > Ollama > vLLM
-
-**Override via environment:**
-- `DEFAULT_MODEL=anthropic:claude-sonnet-4-5` — force primary
-- `FALLBACK_MODEL=ollama:llama3.2` — prepend to fallback chain
-- `PREFER_LOCAL=true` — Ollama/vLLM first, cloud as fallback
-
-## Vector Search Architecture
-
-```
-┌──────────────────────────────────────────────────┐
-│              EmbeddingService (singleton)         │
-│                                                  │
-│  embed_text(text) → list[float]                  │
-│    ├── LiteLLM aembedding() (primary)            │
-│    └── SHA-256 hash-based fallback (384-dim)     │
-│                                                  │
-│  embed_batch(texts) → list[list[float]]          │
-└──────────────────────┬───────────────────────────┘
-                       │
-┌──────────────────────▼───────────────────────────┐
-│              VectorStore (singleton)              │
-│              Qdrant file-based                    │
-│              data/qdrant/                         │
-│                                                  │
-│  Collections: resumes, jobs, cover_letters       │
-│  Vector dim: 384, Distance: COSINE               │
-│                                                  │
-│  add_document(collection, doc_id, text, metadata)│
-│  search(collection, query_text, n_results)       │
-│  delete_document(collection, doc_id)             │
-└──────────────────────┬───────────────────────────┘
-                       │
-┌──────────────────────▼───────────────────────────┐
-│              SearchService                        │
-│                                                  │
-│  search_resumes(query, n) — vector similarity    │
-│  search_jobs(query, n)    — vector similarity    │
-│  hybrid_search(query, collection, n)             │
-│    ├── Vector similarity (Qdrant)                │
-│    └── Keyword matching (SQLAlchemy LIKE)        │
-│    └── Score fusion                              │
-└──────────────────────────────────────────────────┘
-```
-
-## Auth Architecture
-
-```
-┌─────────────────────────────────────────────┐
-│            AuthService                       │
-│                                             │
-│  hash_password(pw) → bcrypt hash            │
-│  verify_password(pw, hash) → bool           │
-│  create_access_token(data) → JWT string     │
-│  decode_token(token) → payload dict         │
-│  register_user(email, pw, name) → result    │
-│  authenticate_user(email, pw) → User | None │
-└──────────────────┬──────────────────────────┘
-                   │
-┌──────────────────▼──────────────────────────┐
-│         auth_middleware.py                   │
-│                                             │
-│  get_current_user_dependency(token) → User  │
-│    └── FastAPI Depends() for protected      │
-│        endpoints                            │
-└─────────────────────────────────────────────┘
-
-JWT: HS256, 24h expiry, secret from JWT_SECRET_KEY env var
-```
-
 ## Database Schema
 
-SQLAlchemy declarative models with SQLite (default) or PostgreSQL (optional via docker-compose).
-
-| Table | Purpose | Key Columns |
-|---|---|---|
-| `users` | User accounts | `id`, `email`, `name`, `profile_json` (stores hashed password) |
-| `resumes` | Parsed resume data | `id`, `user_id` (FK→users), `filename`, `content_json`, `raw_text` |
-| `resume_versions` | Multiple file versions per resume | `id`, `resume_id` (FK→resumes), `version_name`, `file_path`, `file_format`, `is_active` |
-| `job_postings` | Parsed job descriptions | `id`, `title`, `company`, `location`, `content_json`, `raw_text`, `source_url` |
-| `tailored_resumes` | Generated tailored resumes | `id`, `resume_id` (FK→resumes), `job_id` (FK→job_postings), `tailored_content`, `match_score` |
-| `analysis_results` | Resume-job match analysis | `id`, `resume_id` (FK→resumes), `job_id` (FK→job_postings), `analysis_json` |
-| `cover_letters` | Generated cover letters | `id`, `resume_id` (FK→resumes), `job_id` (FK→job_postings), `cover_letter_text`, `key_highlights_json`, `company_name` |
-| `startups` | Startup company data | `id`, `name` (unique), `city`, `category`, `website`, `linkedin`, `funding_round` |
-| `scanned_jobs` | Discovered job openings | `id`, `startup_id` (FK→startups), `title`, `location`, `requirements_json`, `link`, `relevance_score`, `is_applied` |
-| `scanner_state` | Batch processing state | `id`, `state_json`, `batch_number`, `status` |
-| `applications` | Application tracking | `id`, `user_id` (FK→users), `job_id` (FK→job_postings), `resume_id` (FK→resumes), `company_name`, `position_title`, `status`, `notes` |
+| Table | Purpose |
+|---|---|
+| `users` | User accounts |
+| `resumes` | Parsed resume data |
+| `resume_versions` | Multiple file versions per resume |
+| `job_postings` | Parsed job descriptions |
+| `tailored_resumes` | Generated tailored resumes |
+| `analysis_results` | Resume-job match analysis |
+| `cover_letters` | Generated cover letters |
+| `startups` | Startup company data |
+| `scanned_jobs` | Discovered job openings |
+| `scanner_state` | Batch processing state |
+| `applications` | Application tracking |
+| `pipeline_runs` | Pipeline execution history |
 
 ## Deployment
 
 ### Docker Multi-Stage Build
 
 The `Dockerfile` uses a two-stage build:
+1. **Builder stage** (`python:3.12-slim`): Installs Python dependencies
+2. **Runtime stage** (`python:3.12-slim`): Installs Node.js 18 (for LiteParse), copies application
 
-1. **Builder stage** (`python:3.12-slim`): Installs Python dependencies via `pip install`
-2. **Runtime stage** (`python:3.12-slim`): Installs Node.js 18 (for LiteParse CLI), copies installed packages and application code
-
-Exposes ports `8000` (FastAPI) and `8050` (Gradio). Health check hits `/health` every 30s.
-
-### docker-compose.yml
-
-- `app` service: Builds from Dockerfile, maps ports 8000/8050, mounts `data/` and `outputs/` as volumes
-- Optional PostgreSQL service (commented out): Uncomment and update `DATABASE_URL` to switch from SQLite
+Exposes ports `8000` (FastAPI) and `8050` (Gradio).
 
 ### CI/CD
 
-**`.github/workflows/ci.yml`** — Runs on push/PR to `main`:
-- **Lint job**: `ruff check .` + `ruff format --check .`
-- **Test job**: `pytest tests/ -v` on Python 3.10, 3.11, 3.12 matrix
-- **Build job**: Docker image build on main branch push (after lint+test pass)
-
-**`.github/workflows/release.yml`** — Runs on version tags (`v*`):
-- Builds and pushes Docker image to GitHub Container Registry (ghcr.io)
-- Tags: semver (`1.0.0`, `1.0`), SHA
-- Auto-generates changelog and creates GitHub Release
+**`.github/workflows/ci.yml`** — Lint (ruff), Test (pytest on 3.10/3.11/3.12), Build (Docker)
+**`.github/workflows/release.yml`** — Tag-based release with GHCR push and changelog

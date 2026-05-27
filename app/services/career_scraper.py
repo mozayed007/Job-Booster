@@ -1,7 +1,6 @@
 """Career Scraper Service - Scrapes career pages using Crawl4AI."""
 
 import asyncio
-from typing import List, Optional
 from urllib.parse import urljoin
 
 try:
@@ -74,7 +73,7 @@ class CareerScraper:
 
     async def _try_career_url(
         self, crawler: "AsyncWebCrawler", base_url: str, path: str
-    ) -> Optional[str]:
+    ) -> str | None:
         """Try to scrape a single career URL path."""
         url = urljoin(base_url, path)
 
@@ -153,7 +152,7 @@ class CareerScraper:
 
     async def scrape_multiple(
         self,
-        websites: List[str],
+        websites: list[str],
         max_concurrent: int = 5,
     ) -> dict[str, str]:
         """

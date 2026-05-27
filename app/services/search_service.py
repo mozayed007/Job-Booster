@@ -1,7 +1,7 @@
 """Hybrid search combining vector similarity + keyword matching."""
 
 import re
-from typing import Any, Optional
+from typing import Any
 
 from loguru import logger
 
@@ -18,8 +18,8 @@ class SearchService:
 
     def __init__(
         self,
-        vector_store: Optional[VectorStore] = None,
-        db_service: Optional[DatabaseService] = None,
+        vector_store: VectorStore | None = None,
+        db_service: DatabaseService | None = None,
     ):
         self.vector_store = vector_store or get_vector_store()
         self.db_service = db_service
@@ -74,14 +74,14 @@ class SearchService:
         return ranked[:n_results]
 
     async def index_resume(
-        self, resume_id: int, text: str, metadata: Optional[dict[str, Any]] = None
+        self, resume_id: int, text: str, metadata: dict[str, Any] | None = None
     ):
         """Index a resume in the vector store."""
         meta = {"type": "resume", "resume_id": resume_id, **(metadata or {})}
         await self.vector_store.add_document("resumes", f"resume_{resume_id}", text, meta)
         logger.info(f"Indexed resume {resume_id}")
 
-    async def index_job(self, job_id: int, text: str, metadata: Optional[dict[str, Any]] = None):
+    async def index_job(self, job_id: int, text: str, metadata: dict[str, Any] | None = None):
         """Index a job posting in the vector store."""
         meta = {"type": "job", "job_id": job_id, **(metadata or {})}
         await self.vector_store.add_document("jobs", f"job_{job_id}", text, meta)
@@ -144,8 +144,8 @@ class SearchService:
 
 
 def get_search_service(
-    vector_store: Optional[VectorStore] = None,
-    db_service: Optional[DatabaseService] = None,
+    vector_store: VectorStore | None = None,
+    db_service: DatabaseService | None = None,
 ) -> SearchService:
     """Create a SearchService instance."""
     return SearchService(vector_store=vector_store, db_service=db_service)

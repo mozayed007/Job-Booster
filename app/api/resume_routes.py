@@ -5,7 +5,7 @@ from fastapi.responses import Response
 from loguru import logger
 
 from app.agents.cover_letter import generate_cover_letter
-from app.agents.resume_tailor import run_tailor_graph
+from app.agents.resume_tailor import tailor_resume
 from app.models.api_models import (
     AnalysisData,
     AnalysisResponse,
@@ -28,6 +28,8 @@ from app.services.db_service import (
 )
 from app.services.export_service import export_content
 from app.services.parsing_service import JobParser, ParserLLM, ResumeParser, extract_text
+from app.services.search_service import SearchService
+from app.services.vector_store import get_vector_store
 
 router = APIRouter(tags=["Resume & Job"])
 
@@ -62,6 +64,17 @@ async def parse_resume(file: UploadFile = File(...)):
         finally:
             db.close()
 
+        # Auto-index to vector store
+        if resume_id:
+            try:
+                vs = get_vector_store()
+                if vs.is_available:
+                    search_svc = SearchService(vector_store=vs)
+                    index_text = resume.raw_text or str(resume.model_dump(mode="json"))
+                    await search_svc.index_resume(resume_id, index_text)
+            except Exception as idx_err:
+                logger.warning(f"Auto-index resume failed (non-fatal): {idx_err}")
+
         return ResumeParseResponse(
             success=True,
             message="Resume parsed successfully",
@@ -87,7 +100,7 @@ async def parse_job(request: JobTextRequest):
         db = get_db_session()
         try:
             service = DatabaseService(db)
-            service.store_job_posting(
+            job_id = service.store_job_posting(
                 JobPostingCreateData(
                     title=job.title,
                     company=job.company_info.name if job.company_info else None,
@@ -97,6 +110,16 @@ async def parse_job(request: JobTextRequest):
             )
         finally:
             db.close()
+
+        # Auto-index to vector store
+        if job_id:
+            try:
+                vs = get_vector_store()
+                if vs.is_available:
+                    search_svc = SearchService(vector_store=vs)
+                    await search_svc.index_job(job_id, request.text[:5000])
+            except Exception as idx_err:
+                logger.warning(f"Auto-index job failed (non-fatal): {idx_err}")
 
         return JobParseResponse(
             success=True,
@@ -193,7 +216,7 @@ async def tailor_resume_endpoint(
             return TailoredResumeResponse(success=False, message="Could not extract text from file")
 
         # Run tailoring
-        result = await run_tailor_graph(resume_text, job_text, format_type)
+        result = await tailor_resume(resume_text, job_text, format_type)
 
         return TailoredResumeResponse(
             success=True,
@@ -282,7 +305,7 @@ async def tailor_to_template(
         company = job.company_info.name if job.company_info else ""
 
         # Tailor the content
-        tailor_result = await run_tailor_graph(resume_text, job_text, "text")
+        tailor_result = await tailor_resume(resume_text, job_text, "text")
 
         # Update resume summary with tailored content
         resume.summary = tailor_result.tailored_content[:2000]

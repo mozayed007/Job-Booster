@@ -1,6 +1,6 @@
 """FastAPI router for search & indexing endpoints."""
 
-from typing import Any, Optional
+from typing import Any
 
 from fastapi import APIRouter, HTTPException
 from loguru import logger
@@ -26,7 +26,7 @@ class HybridSearchRequest(BaseModel):
 
 class IndexDocumentRequest(BaseModel):
     text: str
-    metadata: Optional[dict[str, Any]] = None
+    metadata: dict[str, Any] | None = None
 
 
 def _get_search_service() -> SearchService:

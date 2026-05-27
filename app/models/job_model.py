@@ -1,8 +1,7 @@
 """Job description data models for Job_Booster application."""
 
-from typing import Optional
 
-from pydantic import Field
+from pydantic import BaseModel, Field
 
 from .base_model import JobBoosterBase
 
@@ -11,11 +10,11 @@ class CompanyInfo(JobBoosterBase):
     """Company information details."""
 
     name: str
-    industry: Optional[str] = None
-    location: Optional[str] = None
-    website: Optional[str] = None
-    description: Optional[str] = None
-    size: Optional[str] = None
+    industry: str | None = None
+    location: str | None = None
+    website: str | None = None
+    description: str | None = None
+    size: str | None = None
 
 
 class Requirement(JobBoosterBase):
@@ -23,7 +22,7 @@ class Requirement(JobBoosterBase):
 
     description: str
     is_required: bool = True
-    category: Optional[str] = None
+    category: str | None = None
     extracted_skills: list[str] = Field(default_factory=list)
 
 
@@ -38,7 +37,7 @@ class Benefit(JobBoosterBase):
     """Job benefit details."""
 
     description: str
-    category: Optional[str] = None
+    category: str | None = None
 
 
 class JobPosting(JobBoosterBase):
@@ -47,12 +46,25 @@ class JobPosting(JobBoosterBase):
     title: str
     company_info: CompanyInfo = Field(default_factory=lambda: CompanyInfo(name=""))
     description: str = ""
-    location: Optional[str] = None
-    job_type: Optional[str] = None
-    experience_level: Optional[str] = None
+    location: str | None = None
+    job_type: str | None = None
+    experience_level: str | None = None
     requirements: list[Requirement] = Field(default_factory=list)
     responsibilities: list[Responsibility] = Field(default_factory=list)
     benefits: list[Benefit] = Field(default_factory=list)
     required_skills: list[str] = Field(default_factory=list)
     preferred_skills: list[str] = Field(default_factory=list)
-    source_url: Optional[str] = None
+    source_url: str | None = None
+
+
+class ScrapedJob(BaseModel):
+    """Lightweight model for jobs discovered from external sources."""
+
+    model_config = {"extra": "ignore"}
+
+    title: str
+    company: str = ""
+    location: str = ""
+    url: str = ""
+    description: str = ""
+    source: str = ""

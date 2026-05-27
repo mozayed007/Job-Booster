@@ -5,7 +5,7 @@ Handles SQLite database operations via SQLAlchemy: setup, session management, CR
 
 import os
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from loguru import logger
 from pydantic import BaseModel
@@ -17,6 +17,7 @@ from app.models.db_models import (
     ApplicationDB,
     CoverLetterDB,
     JobPostingDB,
+    PipelineRun,
     ResumeDB,
     ResumeVersionDB,
     ScannedJobDB,
@@ -68,53 +69,53 @@ def get_db_session() -> Session:
 
 
 class ResumeCreateData(BaseModel):
-    user_id: Optional[int] = None
+    user_id: int | None = None
     filename: str = ""
-    parsed_data: Optional[Dict[str, Any]] = None
-    raw_text: Optional[str] = None
-    version_name: Optional[str] = None
-    file_path: Optional[str] = None
-    file_format: Optional[str] = None
+    parsed_data: dict[str, Any] | None = None
+    raw_text: str | None = None
+    version_name: str | None = None
+    file_path: str | None = None
+    file_format: str | None = None
 
 
 class JobPostingCreateData(BaseModel):
     title: str = ""
-    company: Optional[str] = None
-    description: Optional[str] = None
-    parsed_data: Optional[Dict[str, Any]] = None
-    raw_text: Optional[str] = None
-    source_url: Optional[str] = None
+    company: str | None = None
+    description: str | None = None
+    parsed_data: dict[str, Any] | None = None
+    raw_text: str | None = None
+    source_url: str | None = None
 
 
 class TailoredResumeCreateData(BaseModel):
     resume_id: int
     job_id: int
     tailored_content: str = ""
-    match_score: Optional[float] = None
+    match_score: float | None = None
 
 
 class AnalysisResultCreateData(BaseModel):
     resume_id: int
     job_id: int
-    analysis_data: Optional[Dict[str, Any]] = None
+    analysis_data: dict[str, Any] | None = None
 
 
 class CoverLetterCreateData(BaseModel):
-    resume_id: Optional[int] = None
-    job_id: Optional[int] = None
+    resume_id: int | None = None
+    job_id: int | None = None
     cover_letter_text: str = ""
-    key_highlights: Optional[list] = None
-    company_name: Optional[str] = None
+    key_highlights: list | None = None
+    company_name: str | None = None
 
 
 class ApplicationCreateData(BaseModel):
-    user_id: Optional[int] = None
-    job_id: Optional[int] = None
-    resume_id: Optional[int] = None
+    user_id: int | None = None
+    job_id: int | None = None
+    resume_id: int | None = None
     company_name: str = ""
     position_title: str = ""
     status: str = "applied"
-    notes: Optional[str] = None
+    notes: str | None = None
 
 
 # --- Database Service ---
@@ -131,6 +132,7 @@ TABLE_MODEL_MAP = {
     "scanned_jobs": ScannedJobDB,
     "scanner_state": ScannerStateDB,
     "applications": ApplicationDB,
+    "pipeline_runs": PipelineRun,
 }
 
 
@@ -141,7 +143,7 @@ class DatabaseService:
     def _get_model_by_name(self, table_name: str):
         return TABLE_MODEL_MAP.get(table_name.lower())
 
-    def store_resume(self, data: ResumeCreateData) -> Optional[int]:
+    def store_resume(self, data: ResumeCreateData) -> int | None:
         """Store a parsed resume and optionally its version."""
         try:
             resume_db = ResumeDB(
@@ -173,7 +175,7 @@ class DatabaseService:
             logger.error(f"Error storing resume: {e}")
             return None
 
-    def store_job_posting(self, data: JobPostingCreateData) -> Optional[int]:
+    def store_job_posting(self, data: JobPostingCreateData) -> int | None:
         """Store a parsed job posting."""
         try:
             job_db = JobPostingDB(
@@ -193,7 +195,7 @@ class DatabaseService:
             logger.error(f"Error storing job posting: {e}")
             return None
 
-    def store_tailored_resume(self, data: TailoredResumeCreateData) -> Optional[int]:
+    def store_tailored_resume(self, data: TailoredResumeCreateData) -> int | None:
         """Store a tailored resume."""
         try:
             tailored_db = TailoredResumeDB(
@@ -212,7 +214,7 @@ class DatabaseService:
             logger.error(f"Error storing tailored resume: {e}")
             return None
 
-    def store_analysis_result(self, data: AnalysisResultCreateData) -> Optional[int]:
+    def store_analysis_result(self, data: AnalysisResultCreateData) -> int | None:
         """Store an analysis result."""
         try:
             analysis_db = AnalysisResultDB(
@@ -230,7 +232,7 @@ class DatabaseService:
             logger.error(f"Error storing analysis result: {e}")
             return None
 
-    def store_cover_letter(self, data: CoverLetterCreateData) -> Optional[int]:
+    def store_cover_letter(self, data: CoverLetterCreateData) -> int | None:
         """Store a generated cover letter."""
         try:
             cl_db = CoverLetterDB(
@@ -250,7 +252,38 @@ class DatabaseService:
             logger.error(f"Error storing cover letter: {e}")
             return None
 
-    def get_resume_versions(self, resume_id: int) -> List[Dict[str, Any]]:
+    def store_scraped_jobs_batch(self, jobs: list[dict[str, Any]]) -> list[int]:
+        """Bulk-insert scraped job postings into the job_postings table.
+
+        Args:
+            jobs: list of dicts with keys: title, company, location, raw_text,
+                  source_url, parsed_data (optional).
+
+        Returns:
+            List of inserted record IDs.
+        """
+        inserted_ids: list[int] = []
+        try:
+            for job_data in jobs:
+                job_db = JobPostingDB(
+                    title=job_data.get("title", ""),
+                    company=job_data.get("company"),
+                    location=job_data.get("location"),
+                    content_json=job_data.get("parsed_data"),
+                    raw_text=job_data.get("raw_text"),
+                    source_url=job_data.get("source_url"),
+                )
+                self.db.add(job_db)
+                self.db.flush()
+                inserted_ids.append(job_db.id)
+            self.db.commit()
+            logger.info(f"Stored {len(inserted_ids)} scraped jobs in batch")
+        except Exception as e:
+            self.db.rollback()
+            logger.error(f"Error in batch job insert: {e}")
+        return inserted_ids
+
+    def get_resume_versions(self, resume_id: int) -> list[dict[str, Any]]:
         """Get all versions for a resume."""
         try:
             versions = (
@@ -271,7 +304,7 @@ class DatabaseService:
             logger.error(f"Error getting resume versions: {e}")
             return []
 
-    def get_active_version(self, resume_id: int) -> Optional[Dict[str, Any]]:
+    def get_active_version(self, resume_id: int) -> dict[str, Any] | None:
         """Get the active version for a resume."""
         try:
             version = (
@@ -296,7 +329,7 @@ class DatabaseService:
             logger.error(f"Error getting active version: {e}")
             return None
 
-    def insert_record(self, table_name: str, data: Dict[str, Any]) -> Optional[int]:
+    def insert_record(self, table_name: str, data: dict[str, Any]) -> int | None:
         """Insert a record into any table by name."""
         model_class = self._get_model_by_name(table_name)
         if not model_class:
@@ -318,8 +351,8 @@ class DatabaseService:
         table_name: str,
         limit: int = 100,
         offset: int = 0,
-        filter_conditions: Optional[Dict[str, Any]] = None,
-    ) -> List[Dict[str, Any]]:
+        filter_conditions: dict[str, Any] | None = None,
+    ) -> list[dict[str, Any]]:
         """Query records from any table by name."""
         model_class = self._get_model_by_name(table_name)
         if not model_class:

@@ -1,6 +1,5 @@
 """FastAPI router for application tracking."""
 
-from typing import Optional
 
 from fastapi import APIRouter, HTTPException
 from loguru import logger
@@ -13,18 +12,18 @@ router = APIRouter(prefix="/applications", tags=["Application Tracking"])
 
 
 class TrackApplicationRequest(BaseModel):
-    user_id: Optional[int] = None
-    job_id: Optional[int] = None
-    resume_id: Optional[int] = None
+    user_id: int | None = None
+    job_id: int | None = None
+    resume_id: int | None = None
     company_name: str = ""
     position_title: str = ""
     status: str = Field(default="applied")
-    notes: Optional[str] = None
+    notes: str | None = None
 
 
 class UpdateStatusRequest(BaseModel):
     status: str
-    notes: Optional[str] = None
+    notes: str | None = None
 
 
 @router.post("")
@@ -49,8 +48,8 @@ async def track_application(request: TrackApplicationRequest):
 
 @router.get("")
 async def list_applications(
-    user_id: Optional[int] = None,
-    status: Optional[str] = None,
+    user_id: int | None = None,
+    status: str | None = None,
     limit: int = 100,
     offset: int = 0,
 ):
@@ -118,7 +117,7 @@ async def delete_application(app_id: int):
 
 
 @router.get("/stats")
-async def application_stats(user_id: Optional[int] = None):
+async def application_stats(user_id: int | None = None):
     """Get application statistics."""
     db = get_db_session()
     try:

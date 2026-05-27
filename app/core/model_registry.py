@@ -8,7 +8,7 @@ import os
 from dataclasses import dataclass, field
 from enum import Enum
 from functools import lru_cache
-from typing import Any, Optional, Type
+from typing import Any
 
 from loguru import logger
 from pydantic import BaseModel
@@ -39,8 +39,8 @@ class ProviderInfo:
     detected_via: str = ""
 
 
-def _detect_providers() -> list[ProviderInfo]:
-    """Probe environment and local services to find available providers."""
+def _detect_env_providers() -> list[ProviderInfo]:
+    """Detect cloud providers from environment variables (no network I/O)."""
     providers = []
 
     has_openai = bool(os.getenv("OPENAI_API_KEY"))
@@ -72,7 +72,7 @@ def _detect_providers() -> list[ProviderInfo]:
         ProviderInfo(
             name=Provider.GOOGLE,
             available=has_google,
-            model_string="google-gla:gemini-2.0-flash",
+            model_string="google:gemini-2.0-flash",
             detected_via="GEMINI_API_KEY" if has_google else "",
         )
     )
@@ -107,7 +107,37 @@ def _detect_providers() -> list[ProviderInfo]:
         )
     )
 
-    ollama_available = _check_ollama()
+    return providers
+
+
+async def _detect_local_providers_async() -> list[ProviderInfo]:
+    """Detect local providers via HTTP probes (runs off the event loop)."""
+    providers = []
+
+    try:
+        import httpx
+
+        ollama_base = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+        vllm_base = os.getenv("VLLM_BASE_URL", "http://localhost:8001")
+
+        async with httpx.AsyncClient(timeout=1.0) as client:
+            ollama_available = False
+            try:
+                resp = await client.get(f"{ollama_base}/api/tags")
+                ollama_available = resp.status_code < 500
+            except Exception:
+                pass
+
+            vllm_available = False
+            try:
+                resp = await client.get(f"{vllm_base}/health")
+                vllm_available = resp.status_code < 500
+            except Exception:
+                pass
+    except ImportError:
+        ollama_available = False
+        vllm_available = False
+
     ollama_model = os.getenv("OLLAMA_MODEL", "llama3.2")
     providers.append(
         ProviderInfo(
@@ -118,8 +148,6 @@ def _detect_providers() -> list[ProviderInfo]:
         )
     )
 
-    vllm_base = os.getenv("VLLM_BASE_URL", "http://localhost:8001")
-    vllm_available = _check_http(vllm_base + "/health")
     vllm_model = os.getenv("VLLM_MODEL", "default")
     providers.append(
         ProviderInfo(
@@ -133,22 +161,6 @@ def _detect_providers() -> list[ProviderInfo]:
     return providers
 
 
-def _check_ollama() -> bool:
-
-    base = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
-    return _check_http(f"{base}/api/tags")
-
-
-def _check_http(url: str, timeout: float = 2.0) -> bool:
-    try:
-        import httpx
-
-        resp = httpx.get(url, timeout=timeout)
-        return resp.status_code < 500
-    except Exception:
-        return False
-
-
 # ---------------------------------------------------------------------------
 # Settings
 # ---------------------------------------------------------------------------
@@ -157,18 +169,18 @@ class ModelSettings(BaseSettings):
     """All model-related configuration, loaded from environment."""
 
     # Explicit overrides (highest priority)
-    default_model: Optional[str] = None
-    fallback_model: Optional[str] = None
+    default_model: str | None = None
+    fallback_model: str | None = None
 
     # Provider API keys
-    openai_api_key: Optional[str] = None
-    anthropic_api_key: Optional[str] = None
-    gemini_api_key: Optional[str] = None
-    google_api_key: Optional[str] = None
-    google_gemini_api_key: Optional[str] = None
-    openrouter_api_key: Optional[str] = None
-    groq_api_key: Optional[str] = None
-    together_api_key: Optional[str] = None
+    openai_api_key: str | None = None
+    anthropic_api_key: str | None = None
+    gemini_api_key: str | None = None
+    google_api_key: str | None = None
+    google_gemini_api_key: str | None = None
+    openrouter_api_key: str | None = None
+    groq_api_key: str | None = None
+    together_api_key: str | None = None
 
     # Local model config
     ollama_base_url: str = "http://localhost:11434"
@@ -184,7 +196,7 @@ class ModelSettings(BaseSettings):
     model_config = {"env_file": ".env", "extra": "ignore"}
 
 
-@lru_cache()
+@lru_cache
 def get_model_settings() -> ModelSettings:
     return ModelSettings()
 
@@ -200,7 +212,7 @@ class ModelChain:
 
     primary_model_string: str
     fallback_model_strings: list[str] = field(default_factory=list)
-    primary_provider: Optional[Provider] = None
+    primary_provider: Provider | None = None
     all_providers: list[ProviderInfo] = field(default_factory=list)
 
 
@@ -209,10 +221,25 @@ class ModelRegistry:
 
     def __init__(self):
         self.settings = get_model_settings()
-        self.providers = _detect_providers()
-        self._chain: Optional[ModelChain] = None
+        # Phase 1: detect cloud providers from env vars (no network I/O)
+        self.providers = _detect_env_providers()
+        self._chain: ModelChain | None = None
+        self._local_probed = False
         self._configure_env()
         self._configure_litellm()
+        self._log_status()
+
+    async def probe_local_providers(self):
+        """Phase 2: probe local providers (Ollama, vLLM) via HTTP.
+        Call this from an async context (e.g., lifespan handler) to avoid
+        blocking the event loop on startup.
+        """
+        if self._local_probed:
+            return
+        local = await _detect_local_providers_async()
+        self.providers.extend(local)
+        self._local_probed = True
+        self._chain = None  # invalidate cached chain
         self._log_status()
 
     def _configure_env(self):
@@ -230,8 +257,8 @@ class ModelRegistry:
             if val and not os.getenv(key):
                 os.environ[key] = val
 
-        if self._is_available(Provider.OLLAMA):
-            os.environ["OLLAMA_API_BASE"] = s.ollama_base_url
+        # Set OLLAMA_API_BASE regardless of availability (local probe is async)
+        os.environ["OLLAMA_API_BASE"] = s.ollama_base_url
 
     def _configure_litellm(self):
         """Configure LiteLLM global settings."""
@@ -253,7 +280,7 @@ class ModelRegistry:
     def _is_available(self, provider: Provider) -> bool:
         return any(p.name == provider and p.available for p in self.providers)
 
-    def _get_provider(self, provider: Provider) -> Optional[ProviderInfo]:
+    def _get_provider(self, provider: Provider) -> ProviderInfo | None:
         for p in self.providers:
             if p.name == provider:
                 return p
@@ -333,7 +360,7 @@ class ModelRegistry:
         return ModelChain(
             primary_model_string=primary_info.model_string
             if primary_info
-            else "google-gla:gemini-2.0-flash",
+            else "google:gemini-2.0-flash",
             fallback_model_strings=fallbacks,
             primary_provider=primary,
         )
@@ -376,7 +403,7 @@ class ModelRegistry:
             primary_provider=primary,
         )
 
-    def _first_available(self, providers: list[Provider]) -> Optional[Provider]:
+    def _first_available(self, providers: list[Provider]) -> Provider | None:
         for p in providers:
             if self._is_available(p):
                 return p
@@ -437,7 +464,7 @@ class ModelRegistry:
 
     def create_agent(
         self,
-        output_type: Type[BaseModel] | type | None = None,
+        output_type: type[BaseModel] | type | None = None,
         system_prompt: str = "",
         retries: int = 2,
         **kwargs,
@@ -519,7 +546,7 @@ class ModelRegistry:
 # Singleton
 # ---------------------------------------------------------------------------
 
-_registry: Optional[ModelRegistry] = None
+_registry: ModelRegistry | None = None
 
 
 def get_registry() -> ModelRegistry:
