@@ -1,0 +1,95 @@
+# Agent Profile Schema v1.0
+# Portable, field-agnostic format for defining AI agents.
+# Any agentic platform can consume these profiles.
+#
+# Design principles:
+#   - Descriptions are generic (not industry-specific)
+#   - Specialization is a configurable parameter, not a baked-in assumption
+#   - Tools are described abstractly (host platform maps to its own tools)
+#   - Instructions are self-contained (no external file references)
+
+schema_version: "1.0"
+
+# ──────────────────────────────────────────────
+# Top-level profile structure
+# ──────────────────────────────────────────────
+profile:
+  # Identity
+  meta:
+    name: string           # kebab-case identifier (e.g., "job-finder")
+    display_name: string   # Human-readable name (e.g., "Job Finder")
+    version: string        # semver (e.g., "1.0.0")
+    description: string    # Generic, field-agnostic description
+    author: string         # Profile author/org
+    license: string        # SPDX license identifier
+    tags: [string]         # Searchable tags
+
+  # User-configurable specialization
+  # This is what makes the profiles generic — users set their own domain
+  specialization:
+    field: string          # e.g., "software engineering", "healthcare", "finance"
+    industry: string       # e.g., "tech", "healthcare", "fintech"
+    role_types: [string]   # e.g., ["software engineer", "data scientist"]
+    skills_focus: [string] # e.g., ["Python", "React", "AWS"]
+    job_sources:           # Where to search (user-configurable)
+      niche_boards: [{name: string, url: string, description: string}]
+      company_pages: [{name: string, url: string}]
+      ats_boards: [{name: string, url_pattern: string}]
+      community: [{name: string, url: string, description: string}]
+
+  # What the agent needs to function
+  requirements:
+    tools:
+      - name: string           # Abstract tool name (e.g., "web_search")
+        type: string           # "builtin" | "api" | "mcp" | "cli"
+        description: string    # What the tool does (not how)
+        fallback: string       # Alternative if primary unavailable
+        optional: boolean      # Default false
+    llm:
+      min_capability: string   # "text" | "function-calling" | "structured-output"
+      preferred_models: [string]
+      context_window: number   # Minimum tokens needed
+
+  # The agent's brain — full instructions, portable across any LLM
+  instructions: string   # Multi-line markdown (the skill + prompt merged)
+
+  # Structured interaction contract
+  io:
+    inputs:
+      - name: string
+        type: string       # "string" | "number" | "boolean" | "array" | "object"
+        required: boolean
+        description: string
+        default: any        # Optional default value
+    outputs:
+      - name: string
+        type: string
+        description: string
+        schema: object      # Optional JSON Schema for complex types
+
+  # Platform-specific adapter hints (optional)
+  adapters:
+    opencode:
+      trigger: string       # Natural language trigger phrases
+      skill_path: string    # Where to write SKILL.md
+    cursor:
+      trigger: string
+      rules_path: string
+    kilo:
+      mode: string          # "agent" | "plan" | "chat"
+    claude_code:
+      command: string       # Slash command name
+      mcp_tools: [string]   # Required MCP servers
+
+# ──────────────────────────────────────────────
+# Pipeline definition (portable)
+# ──────────────────────────────────────────────
+pipeline:
+  name: string
+  description: string
+  enabled: boolean
+  schedule: string          # Cron expression (optional)
+  steps:
+    - agent: string         # References a profile meta.name
+      description: string
+      pass_artifacts: boolean  # Pass previous step outputs as inputs

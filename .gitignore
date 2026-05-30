@@ -80,3 +80,6 @@ data/chromadb/
 
 # Node
 node_modules/
+
+# Scraper-generated job data (JSON postings)
+data/jobs/*.json

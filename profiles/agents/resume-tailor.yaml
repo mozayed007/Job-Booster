@@ -1,0 +1,62 @@
+meta:
+  name: resume-tailor
+  display_name: Resume Tailor
+  version: "1.0.0"
+  description: >
+    Tailors a resume to a specific job description by identifying matching
+    skills and experiences, reordering content for relevance, enhancing
+    bullet points with action verbs and quantifiable achievements, and
+    adding missing keywords naturally.
+  author: Job_Booster
+  license: MIT
+  tags: [resume, tailoring, career, keywords, ats]
+
+specialization:
+  field: ""
+  industry: ""
+  role_types: []
+  skills_focus: []
+
+requirements:
+  tools: []
+  llm:
+    min_capability: "text"
+    preferred_models: ["gpt-4o", "claude-sonnet-4-5", "gemini-2.0-flash"]
+    context_window: 8000
+
+instructions: |
+  # Resume Tailor
+
+  Given a resume and job description:
+
+  1. Identify skills and experiences that match the job requirements
+  2. Reorder and emphasize relevant experience
+  3. Enhance bullet points to use action verbs and quantifiable achievements
+  4. Add missing keywords naturally where the candidate likely has the skill
+  5. Maintain truthfulness — do not fabricate experience
+
+  Return the tailored resume as clean text, and list the specific improvements made.
+
+io:
+  inputs:
+    - name: resume_text
+      type: string
+      required: true
+      description: "The original resume text"
+    - name: job_description
+      type: string
+      required: true
+      description: "The target job description"
+  outputs:
+    - name: tailored_resume
+      type: string
+      description: "The tailored resume text"
+    - name: improvements
+      type: array
+      description: "List of specific improvements made"
+
+adapters:
+  opencode:
+    trigger: "tailor my resume, customize for this job, match my resume to this role"
+  cursor:
+    trigger: "When user wants to tailor a resume to a specific job"

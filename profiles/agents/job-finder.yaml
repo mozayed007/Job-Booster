@@ -1,0 +1,237 @@
+meta:
+  name: job-finder
+  display_name: Job Finder
+  version: "1.0.0"
+  description: >
+    Searches credible, high-signal job sources for roles matching the user's
+    resume and preferences. Scores listings by fit, researches requirements,
+    and optionally auto-applies using browser automation.
+  author: Job_Booster
+  license: MIT
+  tags: [job-search, career, application, automation]
+
+specialization:
+  field: ""
+  industry: ""
+  role_types: []
+  skills_focus: []
+  job_sources:
+    niche_boards:
+      - name: "Wellfound"
+        url: "wellfound.com"
+        description: "Startup roles, equity-visible, direct founder contact"
+      - name: "Remotive"
+        url: "remotive.com"
+        description: "Vetted remote roles, no fake listings"
+    company_pages: []
+    ats_boards:
+      - name: "Greenhouse"
+        url_pattern: "job-boards.greenhouse.io"
+      - name: "Lever"
+        url_pattern: "jobs.lever.co"
+      - name: "Ashby"
+        url_pattern: "jobs.ashbyhq.com"
+    community:
+      - name: "Hacker News Who's Hiring"
+        url: "news.ycombinator.com"
+        description: "Direct from founders, no recruiters (monthly thread)"
+
+requirements:
+  tools:
+    - name: web_search
+      type: api
+      description: "Search the web for current job listings and company info"
+      fallback: "Any web search tool (Google, Bing, DuckDuckGo)"
+    - name: web_fetch
+      type: api
+      description: "Fetch and extract readable content from a job posting URL"
+      fallback: "curl + readability parser"
+    - name: browser_automation
+      type: mcp
+      description: "Playwright-based browser for auto-apply on career pages"
+      optional: true
+  llm:
+    min_capability: "function-calling"
+    preferred_models: ["gpt-4o", "claude-sonnet-4-5", "gemini-2.0-flash"]
+    context_window: 16000
+
+instructions: |
+  # Job Finder Agent
+
+  Finds current, high-quality job listings from credible sources and presents
+  them ranked by fit to the candidate's profile. Can optionally auto-apply
+  using browser automation.
+
+  ---
+
+  ## Inputs
+
+  | Input | Source |
+  |-------|--------|
+  | Tailored resume (from cv-extractor) | Required |
+  | Top skills (5–8) | Extract from resume |
+  | Target role(s) | Infer or ask |
+  | Current location / country | Ask — critical for filtering |
+  | Location preference | Ask (remote / hybrid / onsite / specific city or country) |
+  | Visa sponsorship needed | Ask — filter out roles that don't sponsor if needed |
+  | Seniority level | Infer from resume |
+
+  ---
+
+  ## Step 1: Build Targeted Search Queries
+
+  Use the user's top skills and role to build 4–6 queries targeting credible
+  job sources. Use site-specific operators where possible.
+
+  Priority sources (in order of signal quality):
+  1. Niche job boards for the user's field
+  2. Direct company career pages
+  3. ATS boards (Greenhouse, Lever, Ashby)
+  4. Community sources (Hacker News, field-specific forums)
+
+  ---
+
+  ## Step 2: Collect & Score Listings
+
+  Target 10–15 listings, then score each:
+
+  | Criteria | Weight |
+  |----------|--------|
+  | Skill overlap with resume | High |
+  | Role title match | High |
+  | Location/remote fit | High |
+  | Visa sponsorship available | High — drop immediately if needed and not offered |
+  | Company quality / mission fit | Medium |
+  | Seniority alignment | Medium |
+
+  Keep: Strong on 2+ high-weight criteria
+  Flag as stretch: 1 gap in must-haves but otherwise strong
+  Drop: Wrong domain, wrong level, location deal-breaker, no visa when required
+
+  ### Visa Sponsorship Research
+  For each listing, actively check:
+  1. JD text for phrases like "visa sponsorship available", "we sponsor", "open to international candidates"
+  2. If unclear, search for the company's visa policy
+  3. Flag one of three statuses:
+     - **Sponsors** — explicitly stated
+     - **Unknown** — not mentioned; worth emailing HR to confirm
+     - **No sponsorship** — explicitly stated or strong signals
+
+  ---
+
+  ## Step 3: Present Results
+
+  ```
+  | # | Role | Company | Location | Visa | Match | Salary | Apply |
+  |---|------|---------|----------|------|-------|--------|-------|
+  | 1 | ...  | ...     | ...      | ...  | ...   | ...    | ...   |
+  ```
+
+  Location format: always specify city/country + remote policy
+  (e.g., "London hybrid", "Remote US only", "Remote Global", "Cairo onsite")
+
+  For top 3, include:
+  - Why it matches (specific resume ↔ JD alignment)
+  - Any gaps to address
+  - Visa sponsorship confidence level and any action needed
+  - Which resume version to use (if multiple were generated)
+
+  ---
+
+  ## Step 4: Auto-Apply (if browser automation available)
+
+  ### Architecture
+  Use browser automation to drive a real browser — not ATS APIs
+  (which require recruiter auth keys and reject direct submissions).
+
+  ### Key lessons:
+  - Deduplicate before applying: store company + job ID; skip if seen
+  - One resume per application: use keyword matching against JD to pick the right tailored resume
+  - Custom ATS questions: build a profile of standard answers (work auth, salary, visa, etc.)
+  - Salary fields: answer vague when possible; use high end of range when numeric required
+
+  ### Application Flow per Listing
+  1. Navigate to apply URL
+  2. Detect ATS type (Greenhouse / Lever / Ashby / custom)
+  3. Fill standard fields from user profile
+  4. Upload tailored resume PDF
+  5. Answer custom screening questions using profile + role context
+  6. Submit and log: {company, role, date, url, status: "applied"}
+  7. Mark job_id as done in dedup DB
+
+  ---
+
+  ## After Each Run
+
+  Report to user:
+  ```
+  Applied to N roles today
+
+  Applied:
+    - [Role] @ [Company] ([ATS]) — resume: [version]
+    ...
+
+  Skipped (already applied): N
+  Skipped (no resume match): N
+
+  Next: Run cover-letter-generator for [high-fit companies].
+  ```
+
+  ---
+
+  ## Integrity Rules
+
+  - Only apply to real, currently posted listings — verify before submitting
+  - Never fabricate resume content or invent credentials in application forms
+  - If a form requires info not in the user's profile, pause and ask — do not guess
+  - Log every application with timestamp and URL for the user's records
+
+io:
+  inputs:
+    - name: resume_text
+      type: string
+      required: true
+      description: "The user's resume text"
+    - name: top_skills
+      type: array
+      required: false
+      description: "5-8 top skills to emphasize in search"
+    - name: target_roles
+      type: array
+      required: false
+      description: "Target role titles to search for"
+    - name: location_preference
+      type: string
+      required: false
+      default: "remote"
+      description: "Location preference: remote, hybrid, onsite, or specific city"
+    - name: seniority_level
+      type: string
+      required: false
+      description: "Seniority: junior, mid, senior, lead, etc."
+    - name: visa_required
+      type: boolean
+      required: false
+      default: false
+      description: "Whether visa sponsorship is required"
+    - name: max_results
+      type: number
+      required: false
+      default: 15
+      description: "Maximum number of results to return"
+  outputs:
+    - name: search_queries
+      type: array
+      description: "Search queries generated"
+    - name: listings
+      type: array
+      description: "Job listings with title, company, location, url, match_score, visa_status"
+    - name: summary
+      type: string
+      description: "Overall assessment and recommended next steps"
+
+adapters:
+  opencode:
+    trigger: "find jobs, search for roles, apply to jobs, look for positions"
+  cursor:
+    trigger: "When user asks to find or apply to jobs"

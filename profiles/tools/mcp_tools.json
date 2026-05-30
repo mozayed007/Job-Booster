@@ -1,0 +1,114 @@
+{
+  "$schema": "https://modelcontextprotocol.io/schema/2024-11-05/tool.json",
+  "tools": [
+    {
+      "name": "web_search",
+      "description": "Search the web for current information. Returns title, URL, and snippet for each result.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "The search query string"
+          },
+          "max_results": {
+            "type": "integer",
+            "description": "Number of results to return (1-10)",
+            "default": 5,
+            "minimum": 1,
+            "maximum": 10
+          }
+        },
+        "required": ["query"]
+      },
+      "outputSchema": {
+        "type": "string",
+        "description": "Formatted search results with title, URL, and snippet per result"
+      }
+    },
+    {
+      "name": "web_fetch",
+      "description": "Fetch and extract readable content from a URL. Returns page title, description, and body text in markdown format.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "description": "Full URL to fetch including protocol (e.g., https://example.com)"
+          }
+        },
+        "required": ["url"]
+      },
+      "outputSchema": {
+        "type": "string",
+        "description": "Page content as markdown with title, description, and body text"
+      }
+    },
+    {
+      "name": "file_read",
+      "description": "Read a file from disk. Supports PDF, Markdown, LaTeX, plain text, and DOCX formats.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Absolute or relative path to the file"
+          },
+          "format": {
+            "type": "string",
+            "enum": ["auto", "text", "pdf", "docx", "markdown", "latex"],
+            "default": "auto",
+            "description": "File format (auto-detects from extension)"
+          }
+        },
+        "required": ["path"]
+      },
+      "outputSchema": {
+        "type": "string",
+        "description": "Extracted text content from the file"
+      }
+    },
+    {
+      "name": "browser_automation",
+      "description": "Control a real browser to navigate pages, fill forms, click buttons, and submit applications. Uses Playwright under the hood.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": ["navigate", "click", "type", "select", "screenshot", "get_text", "submit_form", "fill_form"],
+            "description": "Browser action to perform"
+          },
+          "url": {
+            "type": "string",
+            "description": "URL to navigate to (required for navigate action)"
+          },
+          "selector": {
+            "type": "string",
+            "description": "CSS selector for the target element"
+          },
+          "value": {
+            "type": "string",
+            "description": "Value to type or select"
+          },
+          "fields": {
+            "type": "object",
+            "description": "Key-value pairs for fill_form action",
+            "additionalProperties": { "type": "string" }
+          }
+        },
+        "required": ["action"]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "result": { "type": "string" },
+          "screenshot": { "type": "string", "description": "Base64-encoded screenshot (for screenshot action)" }
+        }
+      },
+      "optional": true
+    }
+  ]
+}

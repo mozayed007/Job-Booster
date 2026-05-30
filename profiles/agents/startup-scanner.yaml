@@ -1,0 +1,75 @@
+meta:
+  name: startup-scanner
+  display_name: Startup Scanner
+  version: "1.0.0"
+  description: >
+    Scans company career pages and extracts relevant job openings by
+    crawling career page content, parsing job listings, and scoring
+    each opening against the user's skill profile.
+  author: Job_Booster
+  license: MIT
+  tags: [scanner, career-pages, jobs, automation]
+
+specialization:
+  field: ""
+  industry: ""
+  role_types: []
+  skills_focus: []
+  scan_targets:
+    career_pages: []
+    refresh_schedule: "daily"
+
+requirements:
+  tools:
+    - name: web_fetch
+      type: api
+      description: "Fetch and extract content from career page URLs"
+      fallback: "curl + HTML parser"
+  llm:
+    min_capability: "structured-output"
+    preferred_models: ["gpt-4o", "claude-sonnet-4-5", "gemini-2.0-flash"]
+    context_window: 16000
+
+instructions: |
+  # Startup Scanner
+
+  Extracts job openings from company career pages.
+
+  Focus on roles matching the user's configured skills and interests.
+
+  For each job found, extract:
+  1. title: The job title
+  2. location: Job location (default "Remote" if not specified)
+  3. requirements: Key skills/requirements as a list
+  4. link: URL or "N/A" if not available
+  5. relevance_score: 0.0-1.0 based on skill match
+
+  Only return jobs that seem relevant to the user's profile.
+  Skip non-relevant roles.
+  If no relevant jobs found, return an empty list.
+
+io:
+  inputs:
+    - name: career_page_urls
+      type: array
+      required: true
+      description: "List of career page URLs to scan"
+    - name: target_skills
+      type: array
+      required: false
+      description: "Skills to score relevance against"
+    - name: min_relevance
+      type: number
+      required: false
+      default: 0.5
+      description: "Minimum relevance score threshold"
+  outputs:
+    - name: jobs
+      type: array
+      description: "Extracted job listings with title, location, requirements, link, relevance_score"
+
+adapters:
+  opencode:
+    trigger: "scan career pages, find job openings, check company career pages"
+  cursor:
+    trigger: "When user wants to scan company career pages for openings"

@@ -1,190 +1,411 @@
-# Job_Booster
+# Job Booster
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115%2B-green)](https://fastapi.tiangolo.com/)
+[![Gradio](https://img.shields.io/badge/Gradio-5.0%2B-orange)](https://gradio.app/)
+[![Pydantic AI](https://img.shields.io/badge/Pydantic%20AI-0.2%2B-purple)](https://ai.pydantic.dev/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![CI](https://github.com/mozayed007/Job-Booster/actions/workflows/ci.yml/badge.svg)](https://github.com/mozayed007/Job-Booster/actions/workflows/ci.yml)
+[![Tests](https://img.shields.io/badge/tests-116%2F10%20files-brightgreen)](tests/)
+[![Docker](https://img.shields.io/badge/docker-ready-blue)](Dockerfile)
 
-AI-powered resume tailoring, startup job scanning, and application tracking platform. v1.0.0 — all 12 phases complete.
+**Stop copy-pasting resumes.** Job Booster is an AI platform that parses, tailors, reviews, and tracks your entire job application pipeline — powered by 8 specialized AI agents that work together.
 
-## Features
+Feed it a resume and a job description. Get back a tailored resume, a cover letter, interview prep, and a tracked application — in seconds, not hours.
 
-| Phase | Feature | Description |
-|---|---|---|
-| 1 | Multi-format Resume Parsing | PDF, DOCX, MD, TXT, LaTeX via LiteParse; scanned documents via GLM-OCR |
-| 2 | AI Structured Extraction | Pydantic AI agents produce type-safe, validated Pydantic models from parsed text |
-| 3 | Job Description Parsing | Extract structured requirements, skills, and metadata from job postings |
-| 4 | Resume-Job Match Analysis | Skill matching, gap identification, match scoring, and actionable suggestions |
-| 5 | AI Resume Tailoring | Graph-based workflows via pydantic-graph generate targeted resumes |
-| 6 | Startup Career Page Scraping | TinyFish and Crawl4AI scrape startup career pages with batch processing |
-| 7 | Multi-provider LLM Support | 100+ models via LiteLLM with automatic fallback chains |
-| 8 | Resume Versioning | Track multiple file versions per resume with database-backed storage |
-| 9 | Cover Letter Generation | AI-generated cover letters with key highlights extraction |
-| 10 | Vector Semantic Search | Qdrant-based hybrid search (vector similarity + keyword matching) |
-| 11 | Application Tracking | Full CRUD with status lifecycle and statistics dashboard |
-| 12 | Analytics Dashboard | Resume stats, job stats, skill trends, scanner metrics |
+---
+
+## Why This Exists
+
+Job seekers spend 30+ minutes per application: reading the JD, rewriting bullets, drafting a cover letter, researching the company, tracking the status. Multiply that by 50-100 applications and it becomes a full-time job *before* you even get the job.
+
+Job Booster compresses that cycle to under a minute with a **config-driven agent pipeline** — each agent handles one piece of the workflow, passes typed state to the next, and produces output grounded in your actual experience. No generic filler. No fabricated metrics.
+
+---
+
+## The Agent Experience
+
+8 agents, each with a dedicated skill file and system prompt, orchestrated through typed pipelines:
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                    Full Application Pipeline                         │
+│                                                                     │
+│  ┌──────────┐   ┌──────────────┐   ┌──────────────┐   ┌──────────┐ │
+│  │    CV    │──▶│   Resume     │──▶│   Cover      │──▶│   Job    │ │
+│  │ Extractor│   │   Reviewer   │   │   Letter     │   │  Finder  │ │
+│  └──────────┘   └──────────────┘   └──────────────┘   └──────────┘ │
+│       │               │                  │                  │       │
+│       ▼               ▼                  ▼                  ▼       │
+│  Structured      Per-bullet         4-paragraph        Scored       │
+│  resume data     health score       tailored letter    listings     │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+| Agent | What It Does | Output |
+|-------|-------------|--------|
+| **CV Extractor** | Parses your resume, maps skills to the JD, rewrites with XYZ formula | Structured CV data, relevance summary, missing metrics |
+| **Resume Reviewer** | Diagnoses every bullet, scores resume health, rewrites weak points | Per-bullet reviews, health score, rewritten resume |
+| **Cover Letter Generator** | Writes a grounded 4-paragraph letter — no buzzwords, no fabrication | Plain text + .docx, key angle mapping |
+| **Job Finder** | Generates targeted search queries, scores listings across 6 criteria | Scored job listings with visa status |
+| **Resume Tailor** | Graph-based workflow that restructures resume for a specific role | Tailored content with improvement notes |
+| **Startup Scanner** | Scrapes startup career pages via TinyFish/Crawl4AI, ranks by relevance | Extracted openings with relevance scores |
+| **Outreach Agent** | Drafts follow-ups, thank-you notes, cold outreach, referral requests | Ready-to-send emails by type |
+| **Interview Coach** | Generates behavioral questions, technical topics, STAR stories from your resume | Full prep kit grounded in your experience |
+
+All agents are **config-driven** — defined in `agents.yaml` with skill files, prompts, and output types. Add or modify agents without touching application code.
+
+---
+
+## Portable Agent Profiles
+
+Job Booster supports a portable agent profile architecture under `profiles/` for cross-platform, field-agnostic deployment:
+
+```
+profiles/
+├── schema.yaml          # v1.0 profile schema definition
+├── providers.yaml       # LLM provider definitions + fallback chains
+├── bundle.yaml          # Master bundle with all 8 agent profiles
+├── pipelines.yaml       # Portable pipeline definitions
+├── agents/              # Individual agent YAML profiles
+│   ├── cv-extractor.yaml
+│   ├── resume-reviewer.yaml
+│   ├── cover-letter.yaml
+│   ├── job-finder.yaml
+│   ├── resume-tailor.yaml
+│   ├── startup-scanner.yaml
+│   ├── outreach.yaml
+│   └── interview-coach.yaml
+├── adapters/            # Platform-specific adapters (opencode, cursor, etc.)
+├── runtimes/            # Runtime configurations
+└── tools/               # Tool definitions
+```
+
+Load profiles via `app/agents/profile_loader.py` — backward compatible with the existing `BaseAgent` system.
+
+---
+
+## Pipelines
+
+Agents compose into typed workflows defined in `pipelines.yaml`:
+
+| Pipeline | Steps | Trigger |
+|----------|-------|---------|
+| **Full Application** | CV Extract → Resume Review → Cover Letter → Job Find | On-demand |
+| **Resume Only** | CV Extract → Resume Review | On-demand |
+| **Daily Scanner** | Startup Scanner | Cron (9 AM daily) |
+| **Cover Letter Only** | Cover Letter | On-demand |
+| **Job Search Only** | Job Finder | On-demand |
+| **Outreach** | Outreach Agent | On-demand |
+| **Interview Prep** | Interview Coach | On-demand |
+
+Each pipeline passes a typed `PipelineState` through every step — artifacts collected, errors tracked, results persisted.
+
+---
 
 ## Quick Start
+
+### Prerequisites
+
+- **Python** >= 3.10
+- **Node.js** >= 18 (required by LiteParse for PDF/document parsing)
+
+### Installation
 
 ```bash
 # Clone
 git clone https://github.com/mozayed007/Job-Booster.git
 cd Job-Booster
 
-# Create environment
+# Environment
 python -m venv .venv
 .venv\Scripts\activate        # Windows
 # source .venv/bin/activate   # macOS/Linux
 
-# Install
+# Install dependencies
 pip install -e ".[dev]"
+
+# Install LiteParse CLI (requires Node.js >= 18)
 npm install -g @llamaindex/liteparse
+
+# Optional: Crawl4AI (advanced web scraping)
+pip install -e ".[crawl4ai]"
 
 # Configure
 cp .env.example .env
-# Edit .env — set at least one API key (OPENAI_API_KEY, ANTHROPIC_API_KEY, or GEMINI_API_KEY)
+# Set at least one API key: OPENAI_API_KEY, ANTHROPIC_API_KEY, or GEMINI_API_KEY
 
 # Run
 python scripts/run_app.py
 ```
 
+### Access Points
+
 - **Gradio UI**: http://localhost:8050
 - **API docs**: http://localhost:8000/docs
+- **Health check**: http://localhost:8000/health
+- **Model status**: http://localhost:8000/health/models
+
+---
 
 ## Architecture
 
-Single FastAPI application with internal service layers, Gradio frontend, and SQLite database:
-
 ```
-Gradio UI (8050) → FastAPI (8000) → API Routes → AI Agents → Services
-                                                        ↓
-                                          ┌─────────────┼─────────────┐
-                                          ↓             ↓             ↓
-                                    LiteLLM        SQLAlchemy      Qdrant
-                                   (100+ LLMs)     (SQLite)    (vector search)
+Gradio UI (8050)
+    │
+    ▼
+FastAPI (8000) ──▶ API Routes (10 routers)
+    │
+    ├──▶ Pipeline Engine (async loops, typed state)
+    │        │
+    │        ▼
+    │    Config-Driven Agents (agents.yaml / profiles/)
+    │        │
+    │        ▼
+    ├──▶ LiteLLM (100+ models, auto-fallback chains)
+    ├──▶ LiteParse + GLM-OCR (document parsing)
+    ├──▶ Qdrant (vector semantic search)
+    ├──▶ SQLAlchemy + SQLite (persistence)
+    └──▶ TinyFish + Crawl4AI (career page scraping)
 ```
 
-**Key components:**
-- `app/core/model_registry.py` — Singleton ModelRegistry auto-detects providers, builds fallback chains, provides `create_agent()` factory
-- `app/agents/` — Pydantic AI agents for resume tailoring, cover letters, startup scanning
-- `app/services/` — Business logic: parsing, auth, search, tracking, analytics, export
-- `app/api/` — 7 FastAPI routers: resume, scanner, search, auth, recommendations, tracking, analytics
+**API Routes (10 routers):**
+| Router | Endpoint Prefix | Purpose |
+|--------|----------------|---------|
+| Scanner | `/api/scanner` | Startup career page scanning |
+| Resume | `/api/resume` | Resume parsing, tailoring, review |
+| Search | `/api/search` | Semantic search across vectors |
+| Auth | `/api/auth` | JWT registration, login, profile |
+| Recommendations | `/api/recommendations` | Job/resume matching |
+| Tracking | `/api/tracking` | Application tracking |
+| Analytics | `/api/analytics` | Dashboard stats & skill trends |
+| Pipeline | `/api/pipeline` | Full application pipeline |
+| Discovery | `/api/discovery` | Job board aggregation |
+| Dashboard | `/api/dashboard` | Overview & top matches |
+
+**Key modules:**
+- `app/agents/agents.yaml` — all agent definitions (prompts, skills, output types)
+- `app/agents/base_agent.py` — BaseAgent with YAML-driven config loading
+- `app/agents/profile_loader.py` — Portable profile loader for `profiles/`
+- `app/core/model_registry.py` — auto-detects providers, builds fallback chains
+- `app/core/llm_config.py` — backward-compatible LLM re-exports
+- `app/pipelines/` — PipelineEngine orchestrating multi-agent workflows
+- `app/pipelines/state.py` — typed PipelineState with artifacts & error tracking
+- `app/services/` — 15 service modules (parsing, auth, search, tracking, export)
+- `app/ui/api_client.py` — async HTTP client bridging Gradio to backend APIs
+- `app/middleware/auth_middleware.py` — JWT extraction dependency
+
+---
 
 ## Tech Stack
 
 | Layer | Technology |
-|---|---|
-| Backend | FastAPI, Python 3.10+ |
-| Frontend | Gradio |
-| AI Agents | Pydantic AI + pydantic-graph |
-| LLM Router | LiteLLM (100+ providers) |
+|-------|-----------|
+| Backend | FastAPI 0.115+, Python 3.10+ |
+| Frontend | Gradio 5.0+ (9 tabs) |
+| AI Agents | Pydantic AI 0.2+ + pydantic-graph |
+| Agent Config | YAML (`agents.yaml` + `pipelines.yaml`) + Portable Profiles (`profiles/`) |
+| LLM Router | LiteLLM (100+ providers, auto-fallback) |
 | Document Parsing | LiteParse (LlamaIndex) + GLM-OCR |
-| Web Scraping | TinyFish + Crawl4AI |
-| Vector DB | Qdrant (file-based) |
+| Web Scraping | TinyFish (primary) + Crawl4AI (optional) |
+| Vector DB | Qdrant (file-based, hybrid search) |
 | Database | SQLAlchemy + SQLite |
 | Auth | bcrypt + JWT (python-jose) |
-| Observability | Logfire |
+| Scheduling | APScheduler (cron for pipelines) |
+| Observability | Logfire + Loguru |
+| Export | DOCX, PDF, LaTeX, HTML, plain text |
+| HTTP Client | httpx |
+| Config | pydantic-settings + python-dotenv |
+| YAML Parsing | PyYAML |
+| Async Gradio | nest-asyncio |
+| Build | hatchling |
 | Linting | Ruff |
+| Testing | pytest + pytest-asyncio |
 
-## API Documentation
+---
 
-Full interactive API documentation is available at:
+## Docker
 
-- **Swagger UI**: http://localhost:8000/docs
-- **ReDoc**: http://localhost:8000/redoc
+```bash
+# Build
+docker build -t job-booster .
 
-7 route groups: Resume/Job parsing, Startup Scanner, Search, Auth, Recommendations, Application Tracking, Analytics.
+# Run with environment file
+docker run -p 8000:8000 -p 8050:8050 --env-file .env job-booster
+
+# Or use docker-compose (mounts data/ and outputs/ as volumes)
+docker compose up -d
+```
+
+The Dockerfile uses Python 3.12 slim, installs Node.js 18 for LiteParse, and includes a health check via `scripts/healthcheck.sh`.
+
+---
 
 ## Testing
 
 ```bash
-# Run all 116 tests
+# All tests
 pytest tests/ -v
 
-# Run specific test file
+# Specific file
 pytest tests/test_api.py -v
 
 # Lint
 ruff check .
 ruff format --check .
+
+# Type check
+mypy app/
 ```
 
-Tests run on Python 3.10, 3.11, 3.12 in CI. See `tests/` for test files covering API endpoints, auth, embeddings, vector store, models, scanner, recommendations, tracking, and analytics.
+116 tests across 10 files. CI runs on Python 3.10, 3.11, 3.12.
 
-## Docker
-
-```bash
-# Build and run
-docker build -t job-booster .
-docker run -p 8000:8000 -p 8050:8050 --env-file .env job-booster
-
-# Or use docker-compose
-docker compose up -d
-```
-
-Docker Compose mounts `data/` and `outputs/` as volumes. Optional PostgreSQL service available (see `docker-compose.yml`).
+---
 
 ## Environment Variables
 
-| Variable | Default | Description |
-|---|---|---|
-| `OPENAI_API_KEY` | — | OpenAI API key |
-| `ANTHROPIC_API_KEY` | — | Anthropic API key |
-| `GEMINI_API_KEY` | — | Google Gemini API key |
-| `GROQ_API_KEY` | — | Groq API key |
-| `TOGETHER_API_KEY` | — | Together AI API key |
-| `OPENROUTER_API_KEY` | — | OpenRouter API key |
-| `DEFAULT_MODEL` | auto | Override primary model (`provider:model`) |
-| `FALLBACK_MODEL` | — | Prepend to fallback chain |
-| `PREFER_LOCAL` | `false` | Prefer Ollama/vLLM over cloud |
-| `OLLAMA_BASE_URL` | `http://localhost:11434` | Ollama server URL |
-| `OLLAMA_MODEL` | `llama3.2` | Default Ollama model |
-| `DATABASE_URL` | `sqlite:///./job_booster.db` | Database URL |
-| `TINYFISH_API_KEY` | — | TinyFish API key |
-| `JWT_SECRET_KEY` | random | JWT signing secret |
-| `LOGFIRE_TOKEN` | — | Logfire observability token |
-| `LOG_LEVEL` | `INFO` | Logging level |
+### LLM API Keys (set any combination)
 
-See `.env.example` for the full list with descriptions.
+| Variable | Description |
+|----------|-------------|
+| `OPENAI_API_KEY` | OpenAI (GPT-4o, GPT-4o-mini, o1, etc.) |
+| `ANTHROPIC_API_KEY` | Anthropic (Claude Sonnet, Claude Opus) |
+| `GEMINI_API_KEY` / `GOOGLE_API_KEY` | Google Gemini (Gemini 2.0 Flash, Gemini 1.5 Pro) |
+| `GROQ_API_KEY` | Groq (fast inference for Llama, Mixtral) |
+| `TOGETHER_API_KEY` | Together AI (Llama, Mixtral, CodeLlama) |
+| `OPENROUTER_API_KEY` | OpenRouter (access 100+ models via one API key) |
+
+### Local / Self-Hosted Providers
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `OLLAMA_BASE_URL` | `http://localhost:11434` | Ollama local LLM endpoint |
+| `OLLAMA_MODEL` | `llama3.2` | Default Ollama model |
+| `VLLM_BASE_URL` | `http://localhost:8001` | vLLM self-hosted inference endpoint |
+| `VLLM_MODEL` | `default` | Default vLLM model |
+| `PREFER_LOCAL` | `false` | Prefer Ollama/vLLM over cloud APIs |
+
+### Model Override
+
+| Variable | Description |
+|----------|-------------|
+| `DEFAULT_MODEL` | Override primary model (`provider:model-name`) |
+| `FALLBACK_MODEL` | Prepend to fallback chain |
+| `EMBEDDING_MODEL` | Model for vector embeddings |
+
+### Web Scraping
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `TINYFISH_API_KEY` | — | TinyFish API key (primary scraper) |
+| `USE_CRAWL4AI` | `false` | Enable Crawl4AI (optional advanced scraping) |
+
+### Database & App
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `DATABASE_URL` | `sqlite:///./job_booster.db` | Database URL |
+| `HOST` | `0.0.0.0` | Server host |
+| `PORT` | `8000` | Server port |
+| `API_URL` | `http://localhost:8000` | API base URL |
+| `LOG_LEVEL` | `INFO` | Logging level |
+| `DEBUG` | `False` | Debug mode |
+| `CORS_ORIGINS` | `*` | Comma-separated allowed origins |
+
+### Auth
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `JWT_SECRET_KEY` | random | JWT signing secret (set fixed for production) |
+| `JWT_EXPIRY_HOURS` | `24` | JWT token expiry |
+
+### Observability & LiteLLM
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `LOGFIRE_TOKEN` | — | Logfire observability token |
+| `LITELLM_VERBOSE` | `false` | Verbose LiteLLM logging |
+| `LITELLM_CACHE` | `true` | Enable LiteLLM response caching |
+
+See `.env.example` for the full list with inline documentation.
+
+---
 
 ## Project Structure
 
 ```
 Job_Booster/
 ├── app/
-│   ├── main.py                 # FastAPI entry point, router mounting
-│   ├── frontend.py             # Gradio UI (6 tabs)
-│   ├── agents/                 # Pydantic AI agents (resume tailor, cover letter, scanner)
-│   ├── api/                    # FastAPI routers (7 route modules)
+│   ├── main.py                 # FastAPI entry point (API v0.2.0)
+│   ├── frontend.py             # Gradio UI (9 tabs)
+│   ├── agents/                 # 8 config-driven AI agents
+│   │   ├── agents.yaml         # Agent definitions (prompts, skills, types)
+│   │   ├── base_agent.py       # BaseAgent with YAML loading
+│   │   ├── profile_loader.py   # Portable profile loader
+│   │   ├── web_tools.py        # Web search/fetch Pydantic AI tools
+│   │   └── *.md                # Skill files per agent
+│   ├── api/                    # 10 FastAPI routers
 │   ├── core/                   # Config, ModelRegistry, LLM setup
-│   ├── middleware/              # JWT auth middleware
+│   ├── middleware/             # JWT auth middleware
+│   ├── pipelines/              # Pipeline engine + state + pipeline definitions
+│   ├── services/               # Business logic (15 modules)
 │   ├── models/                 # Pydantic + SQLAlchemy models
 │   ├── prompts/                # LLM prompt templates (Markdown)
-│   ├── services/               # Business logic (15 service modules)
-│   └── ui/                     # Gradio tab components
+│   └── ui/                     # Gradio tab components + API client
+├── profiles/                   # Portable agent profiles
+│   ├── schema.yaml
+│   ├── providers.yaml
+│   ├── bundle.yaml
+│   ├── pipelines.yaml
+│   ├── agents/
+│   ├── adapters/
+│   ├── runtimes/
+│   └── tools/
 ├── data/                       # Sample resumes, jobs, startups
-├── docs/                       # Documentation (Vision, Architecture, Implementation)
-├── outputs/                    # Generated output files
-├── scripts/run_app.py          # Launch script (FastAPI + Gradio)
-├── tests/                      # Test suite (116 tests, 10 files)
-├── .github/workflows/          # CI (lint+test+build) and Release (GHCR)
-├── Dockerfile                  # Multi-stage Docker build
-├── docker-compose.yml          # Docker Compose with optional PostgreSQL
-├── pyproject.toml              # Project metadata, dependencies, tool config
-└── .env.example                # Environment variable template
+├── docs/                       # Vision, Architecture, Implementation
+├── tests/                      # 116 tests, 10 files
+├── scripts/
+│   ├── run_app.py              # Launch script
+│   └── healthcheck.sh          # Docker health check
+├── Dockerfile                  # Multi-stage build (Python 3.12 + Node.js 18)
+├── docker-compose.yml          # Compose with optional PostgreSQL
+├── .env.example                # Full environment variable reference
+├── .github/workflows/          # CI (lint + test) + Release (GHCR)
+└── pyproject.toml              # Metadata, deps, tool config (v1.0.0)
 ```
+
+---
+
+## Gradio UI Tabs
+
+The web interface includes 9 tabs for the complete job search workflow:
+
+| # | Tab | Purpose |
+|---|-----|---------|
+| 1 | **Dashboard** | Overview of your job search at a glance |
+| 2 | **Apply** | Full application package: tailored resume + cover letter + analysis |
+| 3 | **Discover Jobs** | Search Indeed, LinkedIn, Wuzzuf, RemoteOK, and Adzuna |
+| 4 | **Search** | Semantic search across stored resumes and jobs |
+| 5 | **Startup Scanner** | Scan AI/ML startup career pages for relevant openings |
+| 6 | **Recommendations** | Job recommendations and skill gap analysis |
+| 7 | **Application Tracker** | Track and manage job applications with status updates |
+| 8 | **Analytics** | Stats, trends, and skill market insights |
+| 9 | **Auth** | Register, login, and manage your profile |
+
+---
 
 ## Contributing
 
-1. Fork the repository
+1. Fork the repo
 2. Create a feature branch (`git checkout -b feature/my-feature`)
 3. Make changes and add tests
-4. Run lint and tests: `ruff check . && pytest tests/ -v`
-5. Commit with conventional commit messages
-6. Open a pull request against `main`
+4. Run `ruff check . && pytest tests/ -v`
+5. Open a PR against `main`
 
-CI will run lint checks (Ruff) and tests (pytest on Python 3.10/3.11/3.12) automatically on PR.
+CI runs lint + tests automatically on every PR. Releases auto-push to GitHub Container Registry.
+
+---
 
 ## License
 
-MIT License — see [LICENSE](LICENSE) for details.
+MIT — see [LICENSE](LICENSE).

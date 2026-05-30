@@ -1,0 +1,74 @@
+# Portable Pipeline Definitions
+# These define how agents chain together. Any platform can load these.
+
+pipelines:
+  full_application:
+    name: "Full Job Application Pipeline"
+    description: "End-to-end: CV extraction, resume review, cover letter, and job search"
+    enabled: true
+    steps:
+      - agent: cv-extractor
+        description: "Extract CV and tailor resume to job description"
+        pass_artifacts: true
+      - agent: resume-reviewer
+        description: "Review and polish resume bullets using XYZ formula"
+        pass_artifacts: true
+      - agent: cover-letter-generator
+        description: "Generate tailored cover letter"
+        pass_artifacts: true
+      - agent: job-finder
+        description: "Find matching job opportunities"
+        pass_artifacts: true
+
+  resume_only:
+    name: "Resume Tailoring Only"
+    description: "CV extraction and resume review without cover letter or job search"
+    enabled: true
+    steps:
+      - agent: cv-extractor
+        description: "Extract CV and tailor resume to job description"
+        pass_artifacts: true
+      - agent: resume-reviewer
+        description: "Review and polish resume bullets using XYZ formula"
+        pass_artifacts: true
+
+  daily_scanner:
+    name: "Daily Career Page Scanner"
+    description: "Scan company career pages for relevant job openings"
+    enabled: true
+    schedule: "0 9 * * *"
+    steps:
+      - agent: startup-scanner
+        description: "Scan career pages and extract job openings"
+
+  cover_letter_only:
+    name: "Cover Letter Generation"
+    description: "Generate a cover letter from existing resume and job description"
+    enabled: true
+    steps:
+      - agent: cover-letter-generator
+        description: "Generate tailored cover letter"
+
+  job_search_only:
+    name: "Job Search Only"
+    description: "Find job opportunities matching a resume"
+    enabled: true
+    steps:
+      - agent: job-finder
+        description: "Find matching job opportunities"
+
+  outreach:
+    name: "Post-Application Outreach"
+    description: "Generate follow-up, thank-you, cold outreach, and referral messages"
+    enabled: true
+    steps:
+      - agent: outreach-agent
+        description: "Generate outreach messages based on resume and job description"
+
+  interview_prep:
+    name: "Interview Preparation"
+    description: "Generate behavioral questions, technical topics, and STAR stories"
+    enabled: true
+    steps:
+      - agent: interview-coach
+        description: "Generate tailored interview coaching material"
