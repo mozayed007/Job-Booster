@@ -1,0 +1,43 @@
+{
+  "tools": {
+    "web_search": {
+      "type": "api",
+      "description": "Search the web for current information. Returns title, URL, and snippet.",
+      "api": {
+        "endpoint": "/api/tools/web-search",
+        "method": "POST",
+        "parameters": {
+          "query": { "type": "string", "required": true },
+          "max_results": { "type": "integer", "default": 5 }
+        }
+      },
+      "mcp_alternative": "web_search",
+      "builtin_alternatives": ["WebSearch", "google_search", "brave_search"]
+    },
+    "web_fetch": {
+      "type": "api",
+      "description": "Fetch and extract readable content from a URL.",
+      "api": {
+        "endpoint": "/api/tools/web-fetch",
+        "method": "POST",
+        "parameters": {
+          "url": { "type": "string", "required": true }
+        }
+      },
+      "mcp_alternative": "web_fetch",
+      "builtin_alternatives": ["WebFetch", "fetch_url"]
+    },
+    "file_read": {
+      "type": "builtin",
+      "description": "Read files from disk (PDF, MD, LaTeX, DOCX).",
+      "builtin_alternatives": ["Read", "read_file", "file_read"]
+    },
+    "browser_automation": {
+      "type": "mcp",
+      "description": "Control a real browser for form filling and page interaction.",
+      "mcp_server": "@playwright/mcp",
+      "optional": true,
+      "builtin_alternatives": ["browser", "playwright"]
+    }
+  }
+}

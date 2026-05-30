@@ -1,0 +1,150 @@
+openapi: "3.1.0"
+info:
+  title: Job Booster Agent Tools
+  description: >
+    Portable tool definitions for agent profiles.
+    Any REST-capable platform can use these endpoints.
+  version: "1.0.0"
+
+servers:
+  - url: http://localhost:8050/api/tools
+    description: Local development server
+
+paths:
+  /web-search:
+    post:
+      operationId: webSearch
+      summary: Search the web for current information
+      description: >
+        Returns title, URL, and snippet for each result.
+        Use for finding job listings, company info, news, etc.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [query]
+              properties:
+                query:
+                  type: string
+                  description: The search query
+                max_results:
+                  type: integer
+                  default: 5
+                  minimum: 1
+                  maximum: 10
+      responses:
+        "200":
+          description: Search results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  results:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        title:
+                          type: string
+                        url:
+                          type: string
+                          format: uri
+                        snippet:
+                          type: string
+
+  /web-fetch:
+    post:
+      operationId: webFetch
+      summary: Fetch and extract content from a URL
+      description: >
+        Returns page title, description, and body text in markdown.
+        Use for reading job postings, company pages, articles, etc.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [url]
+              properties:
+                url:
+                  type: string
+                  format: uri
+                  description: URL to fetch
+      responses:
+        "200":
+          description: Extracted page content
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  title:
+                    type: string
+                  description:
+                    type: string
+                  text:
+                    type: string
+                  format:
+                    type: string
+                    enum: [markdown, html, text]
+
+  /file-read:
+    post:
+      operationId: fileRead
+      summary: Read a file from disk
+      description: >
+        Supports PDF, Markdown, LaTeX, plain text, and DOCX.
+        Returns extracted text content.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [path]
+              properties:
+                path:
+                  type: string
+                  description: File path (absolute or relative)
+                format:
+                  type: string
+                  enum: [auto, text, pdf, docx, markdown, latex]
+                  default: auto
+      responses:
+        "200":
+          description: File content
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  content:
+                    type: string
+                  format:
+                    type: string
+                  size_bytes:
+                    type: integer
+
+  /health:
+    get:
+      operationId: healthCheck
+      summary: Check if the tools server is running
+      responses:
+        "200":
+          description: Server is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [ok]
+                  tools_available:
+                    type: array
+                    items:
+                      type: string

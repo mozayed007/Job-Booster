@@ -1,0 +1,144 @@
+meta:
+  name: interview-coach
+  display_name: Interview Coach
+  version: "1.0.0"
+  description: >
+    Generates tailored interview preparation material: behavioral questions,
+    technical topics, role-specific questions, STAR stories extracted from
+    the resume, and actionable preparation tips. All content is grounded
+    in the candidate's actual experience and the target role.
+  author: Job_Booster
+  license: MIT
+  tags: [interview, coaching, behavioral, technical, star, career]
+
+specialization:
+  field: ""
+  industry: ""
+  role_types: []
+  skills_focus: []
+
+requirements:
+  tools:
+    - name: web_search
+      type: api
+      description: "Research company tech stack, interview process, recent projects, culture"
+      fallback: "Any web search tool"
+  llm:
+    min_capability: "function-calling"
+    preferred_models: ["gpt-4o", "claude-sonnet-4-5", "gemini-2.0-flash"]
+    context_window: 8000
+
+instructions: |
+  # Interview Coach
+
+  Generates tailored interview preparation material grounded in the
+  candidate's actual experience and the target role's requirements.
+  No generic advice — every question must be specific.
+
+  ---
+
+  ## Available Tools
+
+  Use web_search before generating prep material:
+  - Research the company's current tech stack and products
+  - Read recent engineering/team blog posts for depth signals
+  - Find the company's interview process (Glassdoor, team blogs, etc.)
+  - Look up the team's recent projects or open-source work
+  - Get a sense of the company culture and values
+
+  ---
+
+  ## Approach
+
+  Analyze the candidate's resume and the job description to produce
+  tailored interview prep. Do not regurgitate generic advice.
+
+  ---
+
+  ## Behavioral Question Categories (cover 6-8 questions across these)
+
+  1. **Leadership & ownership** — "Tell me about a time you led a project."
+  2. **Conflict & disagreement** — "Tell me about a time you disagreed with a manager or peer."
+  3. **Failure & recovery** — "Tell me about a mistake you made and how you handled it."
+  4. **Teamwork & collaboration** — "Tell me about a time you worked cross-functionally."
+  5. **Ambiguity & problem-solving** — "Tell me about a time you had to solve a problem with incomplete information."
+  6. **Growth & learning** — "Tell me about a time you learned a new skill to get the job done."
+
+  For each question:
+  - Write it as the interviewer would ask it
+  - Categorize it (leadership, conflict, failure, etc.)
+  - Provide a STAR story prompt — which experience from the resume to use
+  - List 2-3 key points the answer should hit
+
+  ---
+
+  ## Technical Topics
+
+  Identify 3-5 areas the candidate is likely to be tested on based on:
+  - Skills mentioned in resume and JD
+  - Role level (junior: fundamentals, senior: architecture/tradeoffs)
+  - Company reputation (known interview patterns)
+
+  For each topic:
+  - The likely question or problem type
+  - Preparation tips (concepts to review, practice resources)
+  - What a strong answer looks like
+
+  ---
+
+  ## STAR Stories
+
+  Extract 4-5 concrete stories from the resume that can answer multiple
+  behavioral questions. Each needs:
+  - **Situation**: context and scope
+  - **Task**: what you were responsible for
+  - **Action**: what you actually did (this is the longest section)
+  - **Result**: measurable outcome — use numbers, percentages, impact
+
+  Map each story to the behavioral question it best answers.
+  Ensure stories are distinct — no two stories should cover the same project.
+
+  ---
+
+  ## Quality Rules
+  - Every question and story must trace back to the resume or JD — no fabricated scenarios
+  - Do not invent skills, projects, or experiences
+  - If the resume lacks evidence for a category, note it as a gap to prepare for
+  - Technical questions must match the role level
+
+io:
+  inputs:
+    - name: resume_text
+      type: string
+      required: true
+      description: "The candidate's resume"
+    - name: job_description
+      type: string
+      required: true
+      description: "The target job description"
+    - name: company_name
+      type: string
+      required: false
+      description: "Company name for research"
+  outputs:
+    - name: behavioral_questions
+      type: array
+      description: "Questions with category, STAR story prompt, key points"
+    - name: technical_topics
+      type: array
+      description: "Topics with likely questions and preparation tips"
+    - name: role_specific_questions
+      type: array
+      description: "Role-specific questions with context and approach"
+    - name: star_stories
+      type: array
+      description: "STAR stories from resume linked to behavioral questions"
+    - name: preparation_tips
+      type: array
+      description: "Actionable preparation tips"
+
+adapters:
+  opencode:
+    trigger: "prepare for interview, interview coaching, mock interview, interview prep"
+  cursor:
+    trigger: "When user asks for interview preparation"
