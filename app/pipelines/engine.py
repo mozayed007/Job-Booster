@@ -15,7 +15,7 @@ from app.pipelines.state import PipelineState
 
 class PipelineStep:
     """A single step in a pipeline, bound to a config-driven agent."""
-    
+
     def __init__(self, agent_key: str, description: str = ""):
         self.agent_key = agent_key
         self.description = description
@@ -23,7 +23,7 @@ class PipelineStep:
 
 class PipelineConfig:
     """Configuration for a single pipeline, loaded from YAML."""
-    
+
     def __init__(
         self,
         name: str,
@@ -46,20 +46,20 @@ _configs: dict[str, PipelineConfig] = {}
 def load_pipeline_configs(yaml_path: Path | None = None) -> dict[str, PipelineConfig]:
     """Load pipeline definitions from YAML."""
     global _configs
-    
+
     path = yaml_path or _PIPELINES_YAML
     if not path.exists():
         logger.error(f"Pipeline config not found: {path}")
         return {}
-    
+
     with open(path, encoding="utf-8") as f:
         raw = yaml.safe_load(f)
-    
+
     configs = {}
     for key, cfg in raw.get("pipelines", {}).items():
         if not cfg.get("enabled", True):
             continue
-        
+
         steps = [
             PipelineStep(
                 agent_key=s["agent"],
@@ -67,7 +67,7 @@ def load_pipeline_configs(yaml_path: Path | None = None) -> dict[str, PipelineCo
             )
             for s in cfg.get("steps", [])
         ]
-        
+
         configs[key] = PipelineConfig(
             name=cfg.get("name", key),
             description=cfg.get("description", ""),
@@ -75,7 +75,7 @@ def load_pipeline_configs(yaml_path: Path | None = None) -> dict[str, PipelineCo
             schedule=cfg.get("schedule"),
             steps=steps,
         )
-    
+
     _configs = configs
     return _configs
 
@@ -89,11 +89,11 @@ def get_pipeline_config(name: str) -> PipelineConfig | None:
 
 class PipelineEngine:
     """Executes pipelines defined in YAML config."""
-    
+
     def __init__(self):
         if not _configs:
             load_pipeline_configs()
-    
+
     # ------------------------------------------------------------------
     # PipelineInputs Contract
     #
@@ -160,7 +160,7 @@ class PipelineEngine:
         config = _configs.get(pipeline_key)
         if not config:
             raise ValueError(f"Pipeline '{pipeline_key}' not found")
-        
+
         state = PipelineState(
             pipeline_name=config.name,
             resume_text=resume_text,
@@ -168,25 +168,29 @@ class PipelineEngine:
             cv_text=cv_text,
             inputs=inputs or {},
         )
-        
-        EventBus.emit("pipeline_started", {
-            "pipeline": config.name,
-            "steps": len(config.steps),
-        })
-        
+
+        EventBus.emit(
+            "pipeline_started",
+            {
+                "pipeline": config.name,
+                "steps": len(config.steps),
+            },
+        )
+
         from app.agents import get_agent, load_agents
+
         load_agents()
-        
+
         for i, step in enumerate(config.steps):
             state.current_step = i
-            
+
             agent = get_agent(step.agent_key)
             if agent is None:
                 msg = f"Agent '{step.agent_key}' not found"
                 logger.error(msg)
                 state.errors.append(msg)
                 break
-            
+
             try:
                 await agent.execute(state)
             except Exception as e:
@@ -194,19 +198,25 @@ class PipelineEngine:
                 logger.error(msg)
                 state.errors.append(msg)
                 break
-            
-            EventBus.emit("step_complete", {
+
+            EventBus.emit(
+                "step_complete",
+                {
+                    "pipeline": config.name,
+                    "step": step.agent_key,
+                    "step_index": i,
+                },
+            )
+
+        EventBus.emit(
+            "pipeline_completed",
+            {
                 "pipeline": config.name,
-                "step": step.agent_key,
-                "step_index": i,
-            })
-        
-        EventBus.emit("pipeline_completed", {
-            "pipeline": config.name,
-            "steps_completed": state.current_step + 1,
-            "errors": state.errors,
-        })
-        
+                "steps_completed": state.current_step + 1,
+                "errors": state.errors,
+            },
+        )
+
         return state
 
 
@@ -229,14 +239,14 @@ async def run_pipeline(
     inputs: dict[str, str | int | None] | None = None,
 ) -> PipelineState:
     """Convenience function: run a pipeline by key.
-    
+
     Args:
         pipeline_key: Pipeline key from pipelines.yaml
         resume_text: Raw resume text
         job_text: Job description text
         cv_text: Raw CV text
         inputs: Optional extra inputs for pipeline steps
-        
+
     Returns:
         PipelineState with accumulated artifacts and errors
     """

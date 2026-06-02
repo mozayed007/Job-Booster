@@ -13,13 +13,11 @@ class BaseJobBoardScraper(ABC):
     """Abstract base for job board scrapers."""
 
     @abstractmethod
-    async def search(self, query: str, location: str = "", limit: int = 20) -> list[ScrapedJob]:
-        ...
+    async def search(self, query: str, location: str = "", limit: int = 20) -> list[ScrapedJob]: ...
 
     @property
     @abstractmethod
-    def source_name(self) -> str:
-        ...
+    def source_name(self) -> str: ...
 
     @property
     def is_available(self) -> bool:
@@ -47,17 +45,19 @@ class RemoteOKScraper(BaseJobBoardScraper):
                 data = resp.json()
                 # First item is metadata, skip it
                 jobs = []
-                for item in data[1:limit+1]:
+                for item in data[1 : limit + 1]:
                     if not isinstance(item, dict):
                         continue
-                    jobs.append(ScrapedJob(
-                        title=item.get("position", ""),
-                        company=item.get("company", ""),
-                        location=item.get("location", "Remote"),
-                        url=item.get("url", ""),
-                        description=item.get("description", "")[:500],
-                        source="remoteok",
-                    ))
+                    jobs.append(
+                        ScrapedJob(
+                            title=item.get("position", ""),
+                            company=item.get("company", ""),
+                            location=item.get("location", "Remote"),
+                            url=item.get("url", ""),
+                            description=item.get("description", "")[:500],
+                            source="remoteok",
+                        )
+                    )
                 return jobs
         except ImportError:
             logger.warning("httpx not installed — RemoteOK scraper unavailable")
@@ -105,14 +105,16 @@ class AdzunaScraper(BaseJobBoardScraper):
                 data = resp.json()
                 jobs = []
                 for item in data.get("results", []):
-                    jobs.append(ScrapedJob(
-                        title=item.get("title", ""),
-                        company=item.get("company", {}).get("display_name", ""),
-                        location=item.get("location", {}).get("display_name", ""),
-                        url=item.get("redirect_url", ""),
-                        description=item.get("description", "")[:500],
-                        source="adzuna",
-                    ))
+                    jobs.append(
+                        ScrapedJob(
+                            title=item.get("title", ""),
+                            company=item.get("company", {}).get("display_name", ""),
+                            location=item.get("location", {}).get("display_name", ""),
+                            url=item.get("redirect_url", ""),
+                            description=item.get("description", "")[:500],
+                            source="adzuna",
+                        )
+                    )
                 return jobs
         except ImportError:
             logger.warning("httpx not installed — Adzuna scraper unavailable")
@@ -168,14 +170,16 @@ class LinkedInRSSScraper(BaseJobBoardScraper):
                 locations = re.findall(rf'<span[^>]*class="[^"]*{_l}', html)
 
                 for i in range(min(len(titles), limit)):
-                    jobs.append(ScrapedJob(
-                        title=titles[i].strip() if i < len(titles) else "",
-                        company=companies[i].strip() if i < len(companies) else "",
-                        location=locations[i].strip() if i < len(locations) else "",
-                        url=links[i].strip() if i < len(links) else "",
-                        description="",
-                        source="linkedin",
-                    ))
+                    jobs.append(
+                        ScrapedJob(
+                            title=titles[i].strip() if i < len(titles) else "",
+                            company=companies[i].strip() if i < len(companies) else "",
+                            location=locations[i].strip() if i < len(locations) else "",
+                            url=links[i].strip() if i < len(links) else "",
+                            description="",
+                            source="linkedin",
+                        )
+                    )
                 return jobs
         except ImportError:
             logger.warning("httpx not installed — LinkedIn scraper unavailable")
@@ -216,38 +220,47 @@ class IndeedScraper(BaseJobBoardScraper):
                 # Extract job cards from Indeed HTML
                 _card_re = r'<div[^>]*class="[^"]*job_seen_beacon[^"]*"[^>]*>'
                 cards = re.findall(
-                    rf'{_card_re}(.*?)</div>\s*</div>', html, re.DOTALL,
+                    rf"{_card_re}(.*?)</div>\s*</div>",
+                    html,
+                    re.DOTALL,
                 )
                 for card in cards[:limit]:
                     title_m = re.search(
-                        r'<h2[^>]*>.*?<a[^>]*>(.*?)</a>', card, re.DOTALL,
+                        r"<h2[^>]*>.*?<a[^>]*>(.*?)</a>",
+                        card,
+                        re.DOTALL,
                     )
                     company_m = re.search(
                         r'<span[^>]*data-testid="company-name"[^>]*>'
-                        r'(.*?)</span>', card,
+                        r"(.*?)</span>",
+                        card,
                     )
                     location_m = re.search(
                         r'<div[^>]*data-testid="text-location"[^>]*>'
-                        r'(.*?)</div>', card,
+                        r"(.*?)</div>",
+                        card,
                     )
                     link_m = re.search(r'<a[^>]*href="(/viewjob[^"]*)"', card)
 
                     def _clean(x, m):
-                        return re.sub(r'<[^>]+>', '', m.group(1)).strip() if m else x
+                        return re.sub(r"<[^>]+>", "", m.group(1)).strip() if m else x
+
                     title = _clean("", title_m)
                     company = _clean("", company_m)
                     loc_str = _clean("", location_m)
                     link = f"https://www.indeed.com{link_m.group(1)}" if link_m else ""
 
                     if title:
-                        jobs.append(ScrapedJob(
-                            title=title,
-                            company=company,
-                            location=loc_str,
-                            url=link,
-                            description="",
-                            source="indeed",
-                        ))
+                        jobs.append(
+                            ScrapedJob(
+                                title=title,
+                                company=company,
+                                location=loc_str,
+                                url=link,
+                                description="",
+                                source="indeed",
+                            )
+                        )
                 return jobs
         except ImportError:
             logger.warning("httpx not installed — Indeed scraper unavailable")
@@ -286,33 +299,41 @@ class WuzzufScraper(BaseJobBoardScraper):
 
                 _t = r'css-m604qf[^"]*"[^>]*>.*?<a[^>]*>(.*?)</a>'
                 titles = re.findall(
-                    rf'<h2[^>]*class="[^"]*{_t}', html, re.DOTALL,
+                    rf'<h2[^>]*class="[^"]*{_t}',
+                    html,
+                    re.DOTALL,
                 )
                 _c = r'css-17s97q8[^"]*"[^>]*>(.*?)</a>'
                 companies = re.findall(rf'<a[^>]*class="[^"]*{_c}', html)
                 _l = r'css-5wys0k[^"]*"[^>]*>(.*?)</span>'
                 locations = re.findall(rf'<span[^>]*class="[^"]*{_l}', html)
                 links = re.findall(
-                    r'<h2[^>]*>.*?<a[^>]*href="([^"]+)"', html, re.DOTALL,
+                    r'<h2[^>]*>.*?<a[^>]*href="([^"]+)"',
+                    html,
+                    re.DOTALL,
                 )
 
                 for i in range(min(len(titles), limit)):
+
                     def _strip(x):
-                        return re.sub(r'<[^>]+>', '', x).strip() if x else ""
+                        return re.sub(r"<[^>]+>", "", x).strip() if x else ""
+
                     title = _strip(titles[i] if i < len(titles) else "")
                     company = _strip(companies[i] if i < len(companies) else "")
                     loc_str = _strip(locations[i] if i < len(locations) else "")
                     link = f"https://wuzzuf.net{links[i]}" if i < len(links) else ""
 
                     if title:
-                        jobs.append(ScrapedJob(
-                            title=title,
-                            company=company,
-                            location=loc_str,
-                            url=link,
-                            description="",
-                            source="wuzzuf",
-                        ))
+                        jobs.append(
+                            ScrapedJob(
+                                title=title,
+                                company=company,
+                                location=loc_str,
+                                url=link,
+                                description="",
+                                source="wuzzuf",
+                            )
+                        )
                 return jobs
         except ImportError:
             logger.warning("httpx not installed — Wuzzuf scraper unavailable")

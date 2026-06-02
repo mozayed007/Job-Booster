@@ -1,6 +1,5 @@
 """FastAPI router for analytics dashboard."""
 
-
 from fastapi import APIRouter, HTTPException
 from loguru import logger
 

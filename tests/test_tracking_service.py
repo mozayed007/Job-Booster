@@ -91,8 +91,9 @@ class TestGetApplications:
         mock_app.applied_at = None
         mock_app.updated_at = None
         query = mock_db_service.db.query.return_value
-        query.filter.return_value.order_by.return_value \
-            .offset.return_value.limit.return_value.all.return_value = [mock_app]
+        query.filter.return_value.order_by.return_value.offset.return_value.limit.return_value.all.return_value = [  # noqa: E501
+            mock_app
+        ]
 
         results = tracker.get_applications(user_id=1)
         assert len(results) == 1
@@ -100,8 +101,7 @@ class TestGetApplications:
 
     def test_filters_by_status(self, tracker, mock_db_service):
         query = mock_db_service.db.query.return_value
-        query.filter.return_value.filter.return_value.order_by.return_value \
-            .offset.return_value.limit.return_value.all.return_value = []
+        query.filter.return_value.filter.return_value.order_by.return_value.offset.return_value.limit.return_value.all.return_value = []  # noqa: E501
 
         results = tracker.get_applications(status="interview")
         assert results == []

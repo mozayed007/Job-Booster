@@ -11,18 +11,16 @@ Usage:
 from __future__ import annotations
 
 import asyncio
-import json
 import os
 import sys
-from pathlib import Path
 from typing import Any
 
 import httpx
 
-
 # ──────────────────────────────────────────────
 # Tool implementations
 # ──────────────────────────────────────────────
+
 
 async def web_search_impl(query: str, max_results: int = 5) -> dict[str, Any]:
     """Search the web using available backend."""
@@ -52,15 +50,18 @@ async def web_search_impl(query: str, max_results: int = 5) -> dict[str, Any]:
 async def _tinyfish_search(query: str, max_results: int, api_key: str) -> dict[str, Any]:
     """Search via TinyFish API."""
     from tinyfish import AsyncTinyFish
+
     client = AsyncTinyFish(api_key=api_key)
     resp = await client.search.query(query=query)
     results = []
     for r in resp.results[:max_results]:
-        results.append({
-            "title": r.title,
-            "url": r.url,
-            "snippet": r.snippet,
-        })
+        results.append(
+            {
+                "title": r.title,
+                "url": r.url,
+                "snippet": r.snippet,
+            }
+        )
     return {"results": results}
 
 
@@ -74,11 +75,13 @@ async def _serpapi_search(query: str, max_results: int, api_key: str) -> dict[st
         data = resp.json()
         results = []
         for r in data.get("organic_results", [])[:max_results]:
-            results.append({
-                "title": r.get("title", ""),
-                "url": r.get("link", ""),
-                "snippet": r.get("snippet", ""),
-            })
+            results.append(
+                {
+                    "title": r.get("title", ""),
+                    "url": r.get("link", ""),
+                    "snippet": r.get("snippet", ""),
+                }
+            )
         return {"results": results}
 
 
@@ -95,9 +98,10 @@ async def _ddg_search(query: str, max_results: int) -> dict[str, Any]:
         text = resp.text
         results = []
         import re
+
         for match in re.finditer(r'class="result__a"[^>]*href="([^"]*)"[^>]*>(.*?)</a>', text):
             url = match.group(1)
-            title = re.sub(r'<[^>]+>', '', match.group(2)).strip()
+            title = re.sub(r"<[^>]+>", "", match.group(2)).strip()
             if url and title:
                 results.append({"title": title, "url": url, "snippet": ""})
             if len(results) >= max_results:
@@ -112,6 +116,7 @@ async def web_fetch_impl(url: str) -> dict[str, Any]:
     if api_key:
         try:
             from tinyfish import AsyncTinyFish
+
             client = AsyncTinyFish(api_key=api_key)
             resp = await client.fetch.get_contents(urls=[url], format="markdown")
             if resp.results:
@@ -140,6 +145,7 @@ async def web_fetch_impl(url: str) -> dict[str, Any]:
 # REST Server
 # ──────────────────────────────────────────────
 
+
 async def run_server(host: str = "0.0.0.0", port: int = 8052) -> None:
     """Run the tools server."""
     try:
@@ -162,10 +168,12 @@ async def run_server(host: str = "0.0.0.0", port: int = 8052) -> None:
         return web.json_response(result)
 
     async def handle_health(request: web.Request) -> web.Response:
-        return web.json_response({
-            "status": "ok",
-            "tools_available": ["web_search", "web_fetch"],
-        })
+        return web.json_response(
+            {
+                "status": "ok",
+                "tools_available": ["web_search", "web_fetch"],
+            }
+        )
 
     app = web.Application()
     app.router.add_post("/api/tools/web-search", handle_search)

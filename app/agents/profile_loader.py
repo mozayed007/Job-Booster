@@ -14,14 +14,12 @@ Usage:
 
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
 import yaml
 from loguru import logger
-
 
 PROFILES_DIR = Path(__file__).parent.parent.parent / "profiles"
 AGENTS_DIR = PROFILES_DIR / "agents"
@@ -57,7 +55,7 @@ class ProfileAgentConfig:
     extra: dict[str, Any] = field(default_factory=dict)
 
     @classmethod
-    def from_profile(cls, profile: dict[str, Any]) -> "ProfileAgentConfig":
+    def from_profile(cls, profile: dict[str, Any]) -> ProfileAgentConfig:
         """Build config from a parsed profile YAML."""
         meta = profile.get("meta", {})
         requirements = profile.get("requirements", {})
@@ -116,11 +114,11 @@ def load_profiles(
             # Filter if requested
             if agent_filter:
                 # Accept both snake_case and kebab-case
-                filter_set = set(agent_filter) | {
-                    _snake_to_kebab(k) for k in agent_filter
-                } | {
-                    _kebab_to_snake(k) for k in agent_filter
-                }
+                filter_set = (
+                    set(agent_filter)
+                    | {_snake_to_kebab(k) for k in agent_filter}
+                    | {_kebab_to_snake(k) for k in agent_filter}
+                )
                 if config.key not in filter_set and path.stem not in filter_set:
                     continue
 

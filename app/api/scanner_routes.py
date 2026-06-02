@@ -1,6 +1,5 @@
 """FastAPI Router for Startup Scanner endpoints."""
 
-
 from fastapi import APIRouter, BackgroundTasks, Query
 from pydantic import BaseModel
 
@@ -43,13 +42,12 @@ def get_agent() -> StartupScannerAgent:
     global _agent
     if _agent is None:
         from app.agents.base_agent import get_agent as _base_get_agent
+
         agent = _base_get_agent("startup_scanner")
         if agent is None:
             raise RuntimeError("startup_scanner agent not found — check agents.yaml")
         if not isinstance(agent, StartupScannerAgent):
-            raise RuntimeError(
-                f"Expected StartupScannerAgent, got {type(agent).__name__}"
-            )
+            raise RuntimeError(f"Expected StartupScannerAgent, got {type(agent).__name__}")
         _agent = agent
     return _agent
 

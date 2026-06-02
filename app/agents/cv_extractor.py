@@ -9,7 +9,7 @@ from app.pipelines.state import PipelineState
 
 class CVExtractorOutput(BaseModel):
     """Output from the CV extractor."""
-    
+
     tailored_resume: str
     improvements: list[str] = Field(default_factory=list)
     relevance_summary: dict[str, list[str]] = Field(default_factory=dict)
@@ -18,9 +18,9 @@ class CVExtractorOutput(BaseModel):
 
 class CvExtractorAgent(BaseAgent):
     """Extracts CV content and tailors it to job descriptions."""
-    
+
     output_type = CVExtractorOutput
-    
+
     async def execute(self, state: PipelineState) -> None:
         """Pipeline integration: extract and tailor CV, store in artifacts."""
         result = await self.extract_and_tailor(
@@ -28,7 +28,7 @@ class CvExtractorAgent(BaseAgent):
             state.job_text,
         )
         state.artifacts["cv_extractor"] = result
-    
+
     async def extract_and_tailor(
         self,
         cv_text: str,
@@ -36,12 +36,12 @@ class CvExtractorAgent(BaseAgent):
         output_format: str = "text",
     ) -> CVExtractorOutput:
         """Extract CV content and tailor it to a job description.
-        
+
         Args:
             cv_text: Raw CV/resume text
             job_text: Job description text
             output_format: Output format (text, markdown, etc.)
-            
+
         Returns:
             CVExtractorOutput with tailored resume and analysis
         """
@@ -52,9 +52,9 @@ class CvExtractorAgent(BaseAgent):
                 relevance_summary={},
                 missing_metrics=[],
             )
-        
+
         prompt = self._build_prompt(cv_text, job_text, output_format)
-        
+
         try:
             result = await self._agent.run(prompt)
             return result.output
@@ -66,7 +66,7 @@ class CvExtractorAgent(BaseAgent):
                 relevance_summary={},
                 missing_metrics=[],
             )
-    
+
     def _build_prompt(self, cv_text: str, job_text: str, output_format: str) -> str:
         """Build the user prompt for CV extraction and tailoring."""
         return f"""Extract and tailor the following CV to match the job description.
@@ -95,17 +95,17 @@ async def tailor_resume_from_cv(
     output_format: str = "text",
 ) -> CVExtractorOutput:
     """Convenience function: extract and tailor a CV to a job description.
-    
+
     Args:
         cv_text: Raw CV/resume text
         job_text: Job description text
         output_format: Output format (text, markdown, etc.)
-        
+
     Returns:
         CVExtractorOutput with tailored resume and analysis
     """
     from app.agents.base_agent import get_agent
-    
+
     agent = get_agent("cv_extractor")
     if agent is None:
         return CVExtractorOutput(
@@ -114,5 +114,5 @@ async def tailor_resume_from_cv(
             relevance_summary={},
             missing_metrics=[],
         )
-    
+
     return await agent.extract_and_tailor(cv_text, job_text, output_format)

@@ -69,8 +69,12 @@ class OutreachAgent(BaseAgent):
             )
 
         prompt = self._build_prompt(
-            resume_text, job_text, company_name,
-            hiring_manager, days_since_application, interview_stage,
+            resume_text,
+            job_text,
+            company_name,
+            hiring_manager,
+            days_since_application,
+            interview_stage,
         )
 
         try:
@@ -155,6 +159,10 @@ async def generate_outreach(
         )
 
     return await agent.generate(
-        resume_text, job_text, company_name,
-        hiring_manager, days_since_application, interview_stage,
+        resume_text,
+        job_text,
+        company_name,
+        hiring_manager,
+        days_since_application,
+        interview_stage,
     )

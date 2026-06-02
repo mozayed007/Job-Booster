@@ -41,9 +41,6 @@ def _run_async(coro):
     return asyncio.run(coro)
 
 
-
-
-
 def search_ui(query: str, collection: str, n_results: int) -> dict:
     if not query or not query.strip():
         return {"Error": "No search query provided"}
@@ -78,17 +75,13 @@ def skill_gap_ui(resume_id: int, job_id: int) -> dict:
         return {"Error": str(e)}
 
 
-def track_application_ui(
-    company_name: str, position_title: str, status: str, notes: str
-) -> dict:
+def track_application_ui(company_name: str, position_title: str, status: str, notes: str) -> dict:
     if not company_name or not company_name.strip():
         return {"Error": "No company name provided"}
     if not position_title or not position_title.strip():
         return {"Error": "No position title provided"}
     try:
-        return _run_async(
-            track_application(company_name, position_title, status, notes)
-        )
+        return _run_async(track_application(company_name, position_title, status, notes))
     except Exception as e:
         logger.error(f"track_application error: {e}")
         return {"Error": str(e)}
@@ -222,13 +215,15 @@ def discovery_search_ui(query: str, location: str, sources: list) -> tuple[list,
         all_jobs = result.get("results", {})
         for source, jobs in all_jobs.items():
             for j in jobs:
-                rows.append([
-                    j.get("title", ""),
-                    j.get("company", ""),
-                    j.get("location", ""),
-                    source,
-                    j.get("url", ""),
-                ])
+                rows.append(
+                    [
+                        j.get("title", ""),
+                        j.get("company", ""),
+                        j.get("location", ""),
+                        source,
+                        j.get("url", ""),
+                    ]
+                )
         summary = {
             "total": result.get("total", 0),
             "by_source": result.get("by_source", {}),

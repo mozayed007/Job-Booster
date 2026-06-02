@@ -15,14 +15,13 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any, Type
+from typing import Any
 
 import yaml
 from pydantic import BaseModel, create_model
 from pydantic_ai import Agent
 
 from profiles.provider_resolver import resolve_chain
-
 
 PROFILES_DIR = Path(__file__).parent.parent
 AGENTS_DIR = PROFILES_DIR / "agents"
@@ -94,10 +93,7 @@ def create_agent_from_profile(
     if model_string is None:
         model_string, _ = resolve_chain()
         if not model_string:
-            raise Exception(
-                "No LLM provider available. "
-                "Set an API key or start a local model."
-            )
+            raise Exception("No LLM provider available. Set an API key or start a local model.")
 
     # Build output type
     output_type = _build_output_model(profile)
@@ -125,19 +121,20 @@ def list_profile_agents() -> list[dict[str, Any]]:
             profile = yaml.safe_load(f)
         meta = profile.get("meta", {})
         io_def = profile.get("io", {})
-        agents.append({
-            "name": meta.get("name", ""),
-            "display_name": meta.get("display_name", ""),
-            "description": meta.get("description", ""),
-            "inputs": [
-                {"name": i["name"], "type": i["type"], "required": i.get("required", False)}
-                for i in io_def.get("inputs", [])
-            ],
-            "outputs": [
-                {"name": o["name"], "type": o["type"]}
-                for o in io_def.get("outputs", [])
-            ],
-        })
+        agents.append(
+            {
+                "name": meta.get("name", ""),
+                "display_name": meta.get("display_name", ""),
+                "description": meta.get("description", ""),
+                "inputs": [
+                    {"name": i["name"], "type": i["type"], "required": i.get("required", False)}
+                    for i in io_def.get("inputs", [])
+                ],
+                "outputs": [
+                    {"name": o["name"], "type": o["type"]} for o in io_def.get("outputs", [])
+                ],
+            }
+        )
     return agents
 
 

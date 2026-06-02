@@ -1,6 +1,5 @@
 """FastAPI router for application tracking."""
 
-
 from fastapi import APIRouter, HTTPException
 from loguru import logger
 from pydantic import BaseModel, Field
@@ -57,9 +56,7 @@ async def list_applications(
     db = get_db_session()
     try:
         tracker = ApplicationTracker(db_service=DatabaseService(db))
-        apps = tracker.get_applications(
-            user_id=user_id, status=status, limit=limit, offset=offset
-        )
+        apps = tracker.get_applications(user_id=user_id, status=status, limit=limit, offset=offset)
         return {"success": True, "count": len(apps), "applications": apps}
     except Exception as e:
         logger.error(f"List applications error: {e}")
@@ -81,9 +78,7 @@ async def update_application(app_id: int, request: UpdateStatusRequest):
         tracker = ApplicationTracker(db_service=DatabaseService(db))
         success = tracker.update_status(app_id, request.status, request.notes)
         if not success:
-            raise HTTPException(
-                status_code=404, detail="Application not found or update failed"
-            )
+            raise HTTPException(status_code=404, detail="Application not found or update failed")
         return {
             "success": True,
             "message": f"Application {app_id} updated to '{request.status}'",

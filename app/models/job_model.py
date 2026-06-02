@@ -1,6 +1,5 @@
 """Job description data models for Job_Booster application."""
 
-
 from pydantic import BaseModel, Field
 
 from .base_model import JobBoosterBase

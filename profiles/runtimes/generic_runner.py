@@ -32,7 +32,6 @@ from typing import Any
 import httpx
 import yaml
 
-
 PROFILES_DIR = Path(__file__).parent.parent
 AGENTS_DIR = PROFILES_DIR / "agents"
 PROVIDERS_FILE = PROFILES_DIR / "providers.yaml"
@@ -123,7 +122,7 @@ async def call_llm(
             errors.append(f"{model}: {e}")
             continue
 
-    raise Exception(f"All LLM providers failed:\n" + "\n".join(errors))
+    raise Exception("All LLM providers failed:\n" + "\n".join(errors))
 
 
 async def _call_single(
@@ -167,9 +166,7 @@ async def _call_single(
         response = await client.post(url, json=payload, headers=headers)
 
         if response.status_code != 200:
-            raise Exception(
-                f"HTTP {response.status_code}: {response.text[:500]}"
-            )
+            raise Exception(f"HTTP {response.status_code}: {response.text[:500]}")
 
         data = response.json()
 
@@ -230,12 +227,10 @@ async def run_agent(
     # Resolve model
     if model_string is None:
         from profiles.provider_resolver import resolve_chain
+
         model_string, fallbacks = resolve_chain(chain)
         if not model_string:
-            raise Exception(
-                "No LLM provider available. "
-                "Set an API key or start a local model."
-            )
+            raise Exception("No LLM provider available. Set an API key or start a local model.")
     else:
         fallbacks = []
 

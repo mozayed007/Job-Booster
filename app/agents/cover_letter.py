@@ -9,7 +9,7 @@ from app.pipelines.state import PipelineState
 
 class CoverLetterOutput(BaseModel):
     """Output from the cover letter generator."""
-    
+
     cover_letter: str
     key_highlights: list[str] = Field(default_factory=list)
     tone: str = "professional"
@@ -17,14 +17,14 @@ class CoverLetterOutput(BaseModel):
 
 class CoverLetterAgent(BaseAgent):
     """Generates tailored cover letters from resume and job description."""
-    
+
     output_type = CoverLetterOutput
-    
+
     async def execute(self, state: PipelineState) -> None:
         """Pipeline integration: generate cover letter and store in artifacts."""
         result = await self.generate(state.get_resume_text(), state.job_text)
         state.artifacts["cover_letter_generator"] = result
-    
+
     async def generate(
         self,
         resume_text: str,
@@ -33,13 +33,13 @@ class CoverLetterAgent(BaseAgent):
         hiring_manager: str | None = None,
     ) -> CoverLetterOutput:
         """Generate a cover letter.
-        
+
         Args:
             resume_text: The candidate's resume text
             job_text: The job description text
             company_name: Optional company name for personalization
             hiring_manager: Optional hiring manager name
-            
+
         Returns:
             CoverLetterOutput with generated letter and highlights
         """
@@ -49,9 +49,9 @@ class CoverLetterAgent(BaseAgent):
                 key_highlights=[],
                 tone="professional",
             )
-        
+
         prompt = self._build_prompt(resume_text, job_text, company_name, hiring_manager)
-        
+
         try:
             result = await self._agent.run(prompt)
             return result.output
@@ -62,7 +62,7 @@ class CoverLetterAgent(BaseAgent):
                 key_highlights=[],
                 tone="professional",
             )
-    
+
     def _build_prompt(
         self,
         resume_text: str,
@@ -80,12 +80,12 @@ class CoverLetterAgent(BaseAgent):
             "## Job Description",
             job_text[:4000],
         ]
-        
+
         if company_name:
             parts.append(f"\nCompany: {company_name}")
         if hiring_manager:
             parts.append(f"Hiring Manager: {hiring_manager}")
-        
+
         return "\n".join(parts)
 
 
@@ -96,18 +96,18 @@ async def generate_cover_letter(
     hiring_manager: str | None = None,
 ) -> CoverLetterOutput:
     """Convenience function: generate a cover letter.
-    
+
     Args:
         resume_text: The candidate's resume text
         job_text: The job description text
         company_name: Optional company name
         hiring_manager: Optional hiring manager name
-        
+
     Returns:
         CoverLetterOutput with generated letter and highlights
     """
     from app.agents.base_agent import get_agent
-    
+
     agent = get_agent("cover_letter_generator")
     if agent is None:
         return CoverLetterOutput(
@@ -115,5 +115,5 @@ async def generate_cover_letter(
             key_highlights=[],
             tone="professional",
         )
-    
+
     return await agent.generate(resume_text, job_text, company_name, hiring_manager)

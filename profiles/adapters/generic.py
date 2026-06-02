@@ -16,7 +16,6 @@ from typing import Any
 
 import yaml
 
-
 PROFILES_DIR = Path(__file__).parent.parent
 AGENTS_DIR = PROFILES_DIR / "agents"
 DEFAULT_OUTPUT = PROFILES_DIR / "prompt-pack"
@@ -103,7 +102,9 @@ def generate_prompt_markdown(profile: dict[str, Any]) -> str:
             for inp in inputs:
                 req = "Yes" if inp.get("required") else "No"
                 default = inp.get("default", "")
-                lines.append(f"| {inp['name']} | {inp['type']} | {req} | {default} | {inp['description']} |")
+                lines.append(
+                    f"| {inp['name']} | {inp['type']} | {req} | {default} | {inp['description']} |"
+                )
         if outputs:
             lines.append("")
             lines.append("### Outputs")
@@ -150,7 +151,8 @@ def generate_pack(output_dir: Path) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Generate generic prompt pack")
     parser.add_argument(
-        "--output-dir", "-o",
+        "--output-dir",
+        "-o",
         type=str,
         default=str(DEFAULT_OUTPUT),
         help="Output directory for prompt files",

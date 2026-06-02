@@ -124,10 +124,12 @@ def get_scheduled_jobs() -> list[dict[str, Any]]:
 
     jobs = []
     for job in scheduler.get_jobs():
-        jobs.append({
-            "id": job.id,
-            "name": job.name,
-            "next_run": str(job.next_run_time) if job.next_run_time else None,
-            "trigger": str(job.trigger),
-        })
+        jobs.append(
+            {
+                "id": job.id,
+                "name": job.name,
+                "next_run": str(job.next_run_time) if job.next_run_time else None,
+                "trigger": str(job.trigger),
+            }
+        )
     return jobs

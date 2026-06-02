@@ -10,7 +10,7 @@ from app.pipelines.state import PipelineState
 
 class JobListing(BaseModel):
     """A single job listing."""
-    
+
     title: str
     company: str
     location: str = ""
@@ -23,7 +23,7 @@ class JobListing(BaseModel):
 
 class JobFinderOutput(BaseModel):
     """Output from the job finder."""
-    
+
     search_queries: list[str] = Field(default_factory=list)
     listings: list[JobListing] = Field(default_factory=list)
     summary: str = ""
@@ -31,15 +31,15 @@ class JobFinderOutput(BaseModel):
 
 class JobFinderAgent(BaseAgent):
     """Finds AI/ML job listings matching the user's profile."""
-    
+
     output_type = JobFinderOutput
     tools = [search_tool, fetch_tool]
-    
+
     async def execute(self, state: PipelineState) -> None:
         """Pipeline integration: search for jobs and store in artifacts."""
         result = await self.search(state.get_resume_text())
         state.artifacts["job_finder"] = result
-    
+
     async def search(
         self,
         resume_text: str,
@@ -51,7 +51,7 @@ class JobFinderAgent(BaseAgent):
         max_results: int = 15,
     ) -> JobFinderOutput:
         """Search for job listings matching the user's profile.
-        
+
         Args:
             resume_text: The user's resume text
             top_skills: Optional list of top skills to emphasize
@@ -60,7 +60,7 @@ class JobFinderAgent(BaseAgent):
             seniority_level: Seniority level (junior, mid, senior, etc.)
             visa_required: Whether visa sponsorship is required
             max_results: Maximum number of results to return
-            
+
         Returns:
             JobFinderOutput with search queries, listings, and summary
         """
@@ -70,7 +70,7 @@ class JobFinderAgent(BaseAgent):
                 listings=[],
                 summary="Error: Job finder agent not available.",
             )
-        
+
         prompt = self._build_prompt(
             resume_text,
             top_skills,
@@ -80,7 +80,7 @@ class JobFinderAgent(BaseAgent):
             visa_required,
             max_results,
         )
-        
+
         try:
             result = await self._agent.run(prompt)
             return result.output
@@ -91,7 +91,7 @@ class JobFinderAgent(BaseAgent):
                 listings=[],
                 summary=f"Error searching for jobs: {e}",
             )
-    
+
     def _build_prompt(
         self,
         resume_text: str,
@@ -112,7 +112,7 @@ class JobFinderAgent(BaseAgent):
             "## Search Criteria",
             f"- Location: {location_preference}",
         ]
-        
+
         if top_skills:
             parts.append(f"- Top Skills: {', '.join(top_skills)}")
         if target_roles:
@@ -121,17 +121,19 @@ class JobFinderAgent(BaseAgent):
             parts.append(f"- Seniority: {seniority_level}")
         if visa_required:
             parts.append("- Visa Sponsorship: Required")
-        
-        parts.extend([
-            f"- Max Results: {max_results}",
-            "",
-            "## Instructions",
-            "1. Generate targeted search queries for credible sources",
-            "2. Score each listing on skill overlap, role match, location fit",
-            "3. Research visa sponsorship status where relevant",
-            "4. Provide a summary with recommendations",
-        ])
-        
+
+        parts.extend(
+            [
+                f"- Max Results: {max_results}",
+                "",
+                "## Instructions",
+                "1. Generate targeted search queries for credible sources",
+                "2. Score each listing on skill overlap, role match, location fit",
+                "3. Research visa sponsorship status where relevant",
+                "4. Provide a summary with recommendations",
+            ]
+        )
+
         return "\n".join(parts)
 
 
@@ -145,7 +147,7 @@ async def find_jobs(
     max_results: int = 15,
 ) -> JobFinderOutput:
     """Convenience function: search for jobs matching a profile.
-    
+
     Args:
         resume_text: The user's resume text
         top_skills: Optional list of top skills
@@ -154,12 +156,12 @@ async def find_jobs(
         seniority_level: Seniority level
         visa_required: Whether visa sponsorship is required
         max_results: Maximum results to return
-        
+
     Returns:
         JobFinderOutput with search queries, listings, and summary
     """
     from app.agents.base_agent import get_agent
-    
+
     agent = get_agent("job_finder")
     if agent is None:
         return JobFinderOutput(
@@ -167,7 +169,7 @@ async def find_jobs(
             listings=[],
             summary="Error: Job finder agent not available.",
         )
-    
+
     return await agent.search(
         resume_text,
         top_skills,
