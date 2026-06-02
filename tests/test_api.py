@@ -1,10 +1,13 @@
 """Tests for FastAPI endpoints."""
 
+import os
 import unittest
 
 from fastapi.testclient import TestClient
 
 from app.main import app
+
+_HAS_GOOGLE_API_KEY = bool(os.getenv("GOOGLE_API_KEY"))
 
 
 class TestAPI(unittest.TestCase):
@@ -37,6 +40,7 @@ class TestAPI(unittest.TestCase):
         response = self.client.post("/api/parse/job")
         self.assertEqual(response.status_code, 422)
 
+    @unittest.skipUnless(_HAS_GOOGLE_API_KEY, "requires GOOGLE_API_KEY")
     def test_scanner_progress(self):
         """Test the scanner progress endpoint."""
         response = self.client.get("/api/scanner/progress")
