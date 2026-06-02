@@ -16,8 +16,14 @@ except ImportError:
     logfire = None
 
 from loguru import logger
-from tinyfish import APIError, AsyncTinyFish
-from tinyfish.search.types import SearchResult
+
+try:
+    from tinyfish import APIError, AsyncTinyFish
+    from tinyfish.search.types import SearchResult
+except ImportError:
+    APIError = None  # type: ignore[misc,assignment]
+    AsyncTinyFish = None  # type: ignore[misc,assignment]
+    SearchResult = None  # type: ignore[misc,assignment]
 
 from app.services.career_scraper import CAREER_KEYWORDS, CAREER_PATHS
 
