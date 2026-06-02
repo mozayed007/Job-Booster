@@ -12,6 +12,8 @@ node_modules/
 .mypy_cache
 .kilo
 tests/
+docs/
 *.md
+!README.md
 LICENSE
 .gitignore
