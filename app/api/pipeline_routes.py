@@ -3,7 +3,6 @@
 Routes delegate all business logic to ApplyService.
 """
 
-
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from loguru import logger
 from pydantic import BaseModel
@@ -65,9 +64,7 @@ async def pipeline_apply(request: PipelineApplyRequest):
         svc = ApplyService(DatabaseService(db))
 
         # Resolve resume
-        resume_text, resume_id, resume_record = await svc.resolve_resume_text(
-            request.resume_id
-        )
+        resume_text, resume_id, resume_record = await svc.resolve_resume_text(request.resume_id)
 
         # Resolve job
         job_text, job_id, company_name = await svc.resolve_job_text(

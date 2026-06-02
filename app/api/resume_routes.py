@@ -180,11 +180,13 @@ async def analyze_match(
         db = get_db_session()
         try:
             svc = DatabaseService(db)
-            svc.store_analysis_result(AnalysisResultCreateData(
-                resume_id=0,
-                job_id=0,
-                analysis_data=analysis.model_dump(),
-            ))
+            svc.store_analysis_result(
+                AnalysisResultCreateData(
+                    resume_id=0,
+                    job_id=0,
+                    analysis_data=analysis.model_dump(),
+                )
+            )
         finally:
             db.close()
 

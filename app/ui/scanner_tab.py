@@ -74,18 +74,21 @@ def create_scanner_tab() -> gr.Blocks:
             try:
                 resp = httpx.get(
                     f"{API_URL}/api/scanner/jobs/top",
-                    params={"limit": 50}, timeout=10.0,
+                    params={"limit": 50},
+                    timeout=10.0,
                 )
                 data = resp.json()
                 jobs = data.get("jobs", [])
                 rows = []
                 for j in jobs:
-                    rows.append([
-                        j.get("startup_name", ""),
-                        j.get("title", ""),
-                        j.get("location", ""),
-                        f"{j.get('relevance_score', 0):.2f}",
-                    ])
+                    rows.append(
+                        [
+                            j.get("startup_name", ""),
+                            j.get("title", ""),
+                            j.get("location", ""),
+                            f"{j.get('relevance_score', 0):.2f}",
+                        ]
+                    )
                 return rows
             except Exception as e:
                 return [[str(e), "", "", ""]]

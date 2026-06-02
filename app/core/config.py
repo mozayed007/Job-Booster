@@ -1,6 +1,5 @@
 """Configuration settings for Job_Booster application."""
 
-
 from dotenv import load_dotenv
 from pydantic_settings import BaseSettings
 

@@ -1,6 +1,5 @@
 """Dashboard aggregation endpoint — single call for all dashboard data."""
 
-
 from fastapi import APIRouter, HTTPException
 from loguru import logger
 

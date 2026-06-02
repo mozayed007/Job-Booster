@@ -13,7 +13,6 @@ from typing import Any
 
 import yaml
 
-
 PROFILES_DIR = Path(__file__).parent.parent
 AGENTS_DIR = PROFILES_DIR / "agents"
 DEFAULT_OUTPUT = PROFILES_DIR.parent / ".cursor" / "rules"
@@ -101,7 +100,8 @@ def generate_rules(output_dir: Path) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Generate Cursor rules")
     parser.add_argument(
-        "--output-dir", "-o",
+        "--output-dir",
+        "-o",
         type=str,
         default=str(DEFAULT_OUTPUT),
         help="Output directory for .mdc files",

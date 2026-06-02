@@ -93,8 +93,7 @@ search_tool = Tool(
     web_search,
     takes_ctx=False,
     description=(
-        "Search the web for current information. "
-        "Each result includes title, URL, and snippet."
+        "Search the web for current information. Each result includes title, URL, and snippet."
     ),
 )
 

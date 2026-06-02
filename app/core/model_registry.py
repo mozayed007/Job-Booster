@@ -165,6 +165,7 @@ async def _detect_local_providers_async() -> list[ProviderInfo]:
 # Settings
 # ---------------------------------------------------------------------------
 
+
 class ModelSettings(BaseSettings):
     """All model-related configuration, loaded from environment."""
 

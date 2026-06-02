@@ -8,12 +8,10 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import sys
 from pathlib import Path
 from typing import Any
 
 import yaml
-
 
 PROFILES_DIR = Path(__file__).parent.parent
 AGENTS_DIR = PROFILES_DIR / "agents"
@@ -114,7 +112,8 @@ def generate_skills(output_dir: Path) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Generate opencode skills")
     parser.add_argument(
-        "--output-dir", "-o",
+        "--output-dir",
+        "-o",
         type=str,
         default=str(DEFAULT_OUTPUT),
         help="Output directory for SKILL.md files",

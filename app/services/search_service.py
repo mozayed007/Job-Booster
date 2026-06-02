@@ -73,9 +73,7 @@ class SearchService:
         ranked = sorted(seen.values(), key=lambda x: x.get("score", 0), reverse=True)
         return ranked[:n_results]
 
-    async def index_resume(
-        self, resume_id: int, text: str, metadata: dict[str, Any] | None = None
-    ):
+    async def index_resume(self, resume_id: int, text: str, metadata: dict[str, Any] | None = None):
         """Index a resume in the vector store."""
         meta = {"type": "resume", "resume_id": resume_id, **(metadata or {})}
         await self.vector_store.add_document("resumes", f"resume_{resume_id}", text, meta)

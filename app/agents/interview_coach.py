@@ -94,17 +94,21 @@ class InterviewCoachAgent(BaseAgent):
         ]
 
         if job_description:
-            parts.extend([
-                "",
-                "## Job Description",
-                job_description[:4000],
-            ])
+            parts.extend(
+                [
+                    "",
+                    "## Job Description",
+                    job_description[:4000],
+                ]
+            )
 
         if role_type:
-            parts.extend([
-                "",
-                f"Role type: {role_type}",
-            ])
+            parts.extend(
+                [
+                    "",
+                    f"Role type: {role_type}",
+                ]
+            )
 
         parts.append("""
 

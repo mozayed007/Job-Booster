@@ -9,7 +9,7 @@ from app.pipelines.state import PipelineState
 
 class TailoredResumeOutput(BaseModel):
     """Output from the resume tailor."""
-    
+
     tailored_content: str
     improvements: list[str] = Field(default_factory=list)
     format_type: str = "text"
@@ -17,14 +17,14 @@ class TailoredResumeOutput(BaseModel):
 
 class ResumeTailorAgent(BaseAgent):
     """Tailors a resume to a specific job description."""
-    
+
     output_type = TailoredResumeOutput
-    
+
     async def execute(self, state: PipelineState) -> None:
         """Pipeline integration: tailor resume and store in artifacts."""
         result = await self.tailor(state.resume_text, state.job_text)
         state.artifacts["resume_tailor"] = result
-    
+
     async def tailor(
         self,
         resume_text: str,
@@ -32,12 +32,12 @@ class ResumeTailorAgent(BaseAgent):
         format_type: str = "text",
     ) -> TailoredResumeOutput:
         """Tailor a resume to a job description.
-        
+
         Args:
             resume_text: Raw resume text
             job_text: Job description text
             format_type: Output format (text, markdown, latex)
-            
+
         Returns:
             TailoredResumeOutput with tailored content and improvements
         """
@@ -47,9 +47,9 @@ class ResumeTailorAgent(BaseAgent):
                 improvements=[],
                 format_type=format_type,
             )
-        
+
         prompt = self._build_prompt(resume_text, job_text, format_type)
-        
+
         try:
             result = await self._agent.run(prompt)
             output = result.output
@@ -62,7 +62,7 @@ class ResumeTailorAgent(BaseAgent):
                 improvements=[],
                 format_type=format_type,
             )
-    
+
     def _build_prompt(self, resume_text: str, job_text: str, format_type: str) -> str:
         """Build the user prompt for resume tailoring."""
         return f"""Tailor the following resume to match the job description.
@@ -90,17 +90,17 @@ async def tailor_resume(
     format_type: str = "text",
 ) -> TailoredResumeOutput:
     """Convenience function: tailor a resume to a job description.
-    
+
     Args:
         resume_text: Raw resume text
         job_text: Job description text
         format_type: Output format (text, markdown, latex)
-        
+
     Returns:
         TailoredResumeOutput with tailored content and improvements
     """
     from app.agents.base_agent import get_agent
-    
+
     agent = get_agent("resume_tailor")
     if agent is None:
         return TailoredResumeOutput(
@@ -108,8 +108,5 @@ async def tailor_resume(
             improvements=[],
             format_type=format_type,
         )
-    
+
     return await agent.tailor(resume_text, job_text, format_type)
-
-
-

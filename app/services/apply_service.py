@@ -68,10 +68,7 @@ def _extract_resume_skills(resume_record: dict) -> set[str]:
         for key in ("skills", "technologies", "tools", "required_skills", "preferred_skills"):
             val = content_json.get(key)
             if isinstance(val, list):
-                skills.update(
-                    s.lower() if isinstance(s, str) else str(s).lower()
-                    for s in val
-                )
+                skills.update(s.lower() if isinstance(s, str) else str(s).lower() for s in val)
     return skills
 
 
@@ -137,9 +134,7 @@ class ApplyService:
         if not resume_id:
             return "", 0, {}
 
-        records = self.db_svc.query_records(
-            "resumes", limit=1, filter_conditions={"id": resume_id}
-        )
+        records = self.db_svc.query_records("resumes", limit=1, filter_conditions={"id": resume_id})
         if not records:
             raise ValueError(f"Resume {resume_id} not found")
 
@@ -221,9 +216,7 @@ class ApplyService:
 
         # Run LLM steps
         tailor_result = await tailor_resume(resume_text, job_text, format_type)
-        cl_result = await generate_cover_letter(
-            resume_text, job_text, company_name, hiring_manager
-        )
+        cl_result = await generate_cover_letter(resume_text, job_text, company_name, hiring_manager)
 
         # Parse job and run skill analysis
         resume_skills = _extract_resume_skills(resume_record)
@@ -231,11 +224,10 @@ class ApplyService:
         parsed_job = await job_parser.parse_job_text(job_text)
 
         all_job_skills = {
-            s.lower()
-            for s in parsed_job.required_skills | parsed_job.preferred_skills
+            s.lower() for s in parsed_job.required_skills | parsed_job.preferred_skills
         }
-        skill_matches, matched, unmatched, suggestions, overall_score = (
-            _run_skill_analysis(resume_skills, all_job_skills)
+        skill_matches, matched, unmatched, suggestions, overall_score = _run_skill_analysis(
+            resume_skills, all_job_skills
         )
 
         # Store job if new
@@ -300,14 +292,16 @@ class ApplyService:
         application_id = None
         if resume_id and stored_job_id:
             tracker = ApplicationTracker(db_service=self.db_svc)
-            application_id = tracker.track_application({
-                "user_id": user_id,
-                "job_id": stored_job_id,
-                "resume_id": resume_id,
-                "company_name": company_name or parsed_job.title,
-                "position_title": parsed_job.title,
-                "status": "applied",
-            })
+            application_id = tracker.track_application(
+                {
+                    "user_id": user_id,
+                    "job_id": stored_job_id,
+                    "resume_id": resume_id,
+                    "company_name": company_name or parsed_job.title,
+                    "position_title": parsed_job.title,
+                    "status": "applied",
+                }
+            )
 
         return {
             "tailored_content": tailor_result.tailored_content,

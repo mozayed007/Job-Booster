@@ -20,7 +20,6 @@ from typing import Any
 
 import yaml
 
-
 PROFILES_DIR = Path(__file__).parent
 PROVIDERS_FILE = PROFILES_DIR / "providers.yaml"
 
@@ -28,6 +27,7 @@ PROVIDERS_FILE = PROFILES_DIR / "providers.yaml"
 @dataclass
 class ResolvedProvider:
     """A provider that's available on this machine."""
+
     name: str
     available: bool = False
     model_string: str = ""
@@ -105,16 +105,18 @@ def resolve_providers(
 
         model_string = f"{name}:{default_model}" if default_model else ""
 
-        resolved.append(ResolvedProvider(
-            name=name,
-            available=available,
-            model_string=model_string,
-            base_url=base_url,
-            default_model=default_model,
-            detected_via=detected_via,
-            local=local,
-            models=models,
-        ))
+        resolved.append(
+            ResolvedProvider(
+                name=name,
+                available=available,
+                model_string=model_string,
+                base_url=base_url,
+                default_model=default_model,
+                detected_via=detected_via,
+                local=local,
+                models=models,
+            )
+        )
 
     return resolved
 

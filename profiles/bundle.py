@@ -9,12 +9,10 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import sys
 from pathlib import Path
 from typing import Any
 
 import yaml
-
 
 PROFILES_DIR = Path(__file__).parent
 AGENTS_DIR = PROFILES_DIR / "agents"
@@ -45,6 +43,7 @@ def load_tools() -> dict[str, Any]:
     """Load MCP tool definitions."""
     tools_file = TOOLS_DIR / "mcp_tools.json"
     import json
+
     with open(tools_file, encoding="utf-8") as f:
         return json.load(f)
 
@@ -109,7 +108,8 @@ def build_bundle(
             "tool_count": len(tools.get("tools", [])),
             "provider_count": len(provider_summary),
         },
-        "specialization": specialization or {
+        "specialization": specialization
+        or {
             "field": "",
             "industry": "",
             "role_types": [],
@@ -127,13 +127,15 @@ def build_bundle(
 def main() -> None:
     parser = argparse.ArgumentParser(description="Bundle agent profiles")
     parser.add_argument(
-        "--output", "-o",
+        "--output",
+        "-o",
         type=str,
         default=str(PROFILES_DIR / "bundle.yaml"),
         help="Output file path",
     )
     parser.add_argument(
-        "--specialize", "-s",
+        "--specialize",
+        "-s",
         nargs="*",
         help="Specialization overrides: field=X industry=Y",
     )

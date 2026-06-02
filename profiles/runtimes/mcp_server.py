@@ -26,7 +26,6 @@ from typing import Any
 
 import yaml
 
-
 # Add parent dirs to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
@@ -101,11 +100,13 @@ def build_mcp_manifest() -> dict[str, Any]:
 
     # Add utility tools (web_search, web_fetch, etc.)
     for tool_name, tool_def in mcp_tools.items():
-        tools.append({
-            "name": tool_name,
-            "description": tool_def["description"],
-            "inputSchema": tool_def["inputSchema"],
-        })
+        tools.append(
+            {
+                "name": tool_name,
+                "description": tool_def["description"],
+                "inputSchema": tool_def["inputSchema"],
+            }
+        )
 
     # Add agent tools
     for name, profile in profiles.items():
@@ -122,6 +123,7 @@ def build_mcp_manifest() -> dict[str, Any]:
 # ──────────────────────────────────────────────
 # MCP Protocol Implementation (stdio transport)
 # ──────────────────────────────────────────────
+
 
 class MCPServer:
     """Minimal MCP stdio server for agent profiles."""
@@ -247,6 +249,7 @@ class MCPServer:
         # Resolve LLM provider
         try:
             from profiles.provider_resolver import resolve_chain
+
             primary, fallbacks = resolve_chain()
         except Exception:
             primary, fallbacks = "", []
@@ -273,6 +276,7 @@ class MCPServer:
         # Call the LLM (generic OpenAI-compatible)
         try:
             from profiles.runtimes.generic_runner import call_llm
+
             result = await call_llm(
                 system_prompt=system_prompt,
                 user_message=user_message,
@@ -291,9 +295,7 @@ class MCPServer:
                 "jsonrpc": "2.0",
                 "id": req_id,
                 "result": {
-                    "content": [
-                        {"type": "text", "text": f"Agent execution failed: {e}"}
-                    ],
+                    "content": [{"type": "text", "text": f"Agent execution failed: {e}"}],
                     "isError": True,
                 },
             }

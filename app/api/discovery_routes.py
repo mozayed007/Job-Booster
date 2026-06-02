@@ -1,6 +1,5 @@
 """Job discovery endpoints — search across multiple job boards."""
 
-
 from fastapi import APIRouter, HTTPException
 from loguru import logger
 from pydantic import BaseModel, Field
@@ -72,16 +71,18 @@ async def index_discovered_jobs(request: IndexJobsRequest):
 
         job_dicts = []
         for job in request.jobs:
-            job_dicts.append({
-                "title": job.get("title", ""),
-                "company": job.get("company", ""),
-                "location": job.get("location", ""),
-                "raw_text": (
-                    f"{job.get('title', '')} at {job.get('company', '')}. "
-                    f"{job.get('description', '')}"
-                ),
-                "source_url": job.get("url", ""),
-            })
+            job_dicts.append(
+                {
+                    "title": job.get("title", ""),
+                    "company": job.get("company", ""),
+                    "location": job.get("location", ""),
+                    "raw_text": (
+                        f"{job.get('title', '')} at {job.get('company', '')}. "
+                        f"{job.get('description', '')}"
+                    ),
+                    "source_url": job.get("url", ""),
+                }
+            )
 
         inserted_ids = db_svc.store_scraped_jobs_batch(job_dicts)
 
