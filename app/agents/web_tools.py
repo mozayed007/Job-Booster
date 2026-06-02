@@ -9,11 +9,18 @@ from functools import lru_cache
 
 from loguru import logger
 from pydantic_ai import Tool
-from tinyfish import APIError, AsyncTinyFish
+
+try:
+    from tinyfish import APIError, AsyncTinyFish
+except ImportError:
+    APIError = None  # type: ignore[misc,assignment]
+    AsyncTinyFish = None  # type: ignore[misc,assignment]
 
 
 @lru_cache(maxsize=1)
-def _get_client() -> AsyncTinyFish:
+def _get_client() -> "AsyncTinyFish":
+    if AsyncTinyFish is None:
+        raise RuntimeError("tinyfish is not installed")
     api_key = os.getenv("TINYFISH_API_KEY")
     if not api_key:
         raise ValueError("TINYFISH_API_KEY environment variable not set")
