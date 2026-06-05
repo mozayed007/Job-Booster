@@ -85,10 +85,13 @@ class TestStartupModels:
         assert state.promising_roles[0].relevance_score == 0.9  # Sorted desc
 
     def test_user_profile_defaults(self):
-        """Test UserProfile has sensible defaults."""
+        """Test UserProfile defaults are empty until configured."""
         profile = UserProfile()
-        assert "AI/ML" in profile.skills
-        assert "Remote" in profile.preferred_locations
+        assert profile.skills == []
+        assert profile.preferred_locations == []
+        assert profile.visa_support_required is False
+        assert profile.bigset.enabled is True
+        assert profile.bigset.prefer_imported_jobs is True
 
 
 class TestStartupParser:

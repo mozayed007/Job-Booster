@@ -1,13 +1,11 @@
 """Tests for FastAPI endpoints."""
 
-import os
 import unittest
+from unittest.mock import MagicMock, patch
 
 from fastapi.testclient import TestClient
 
 from app.main import app
-
-_HAS_GOOGLE_API_KEY = bool(os.getenv("GOOGLE_API_KEY"))
 
 
 class TestAPI(unittest.TestCase):
@@ -40,9 +38,20 @@ class TestAPI(unittest.TestCase):
         response = self.client.post("/api/parse/job")
         self.assertEqual(response.status_code, 422)
 
-    @unittest.skipUnless(_HAS_GOOGLE_API_KEY, "requires GOOGLE_API_KEY")
-    def test_scanner_progress(self):
+    @patch("app.api.scanner_routes.get_agent")
+    def test_scanner_progress(self, mock_get_agent):
         """Test the scanner progress endpoint."""
+        mock_get_agent.return_value = MagicMock(
+            get_progress=lambda: {
+                "total_startups": 1,
+                "with_websites": 1,
+                "processed": 0,
+                "remaining": 1,
+                "batch_number": 0,
+                "promising_roles": 0,
+                "status": "in_progress",
+            }
+        )
         response = self.client.get("/api/scanner/progress")
         self.assertEqual(response.status_code, 200)
 

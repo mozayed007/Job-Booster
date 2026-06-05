@@ -35,6 +35,9 @@ instructions: |
 
   Extracts job openings from company career pages.
 
+  Employers may come from startups.md and BigSet imports (merged queue).
+  Use imported stub listings as hints when scanning a known company.
+
   Focus on roles matching the user's configured skills and interests.
 
   For each job found, extract:

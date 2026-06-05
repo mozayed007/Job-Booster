@@ -35,10 +35,15 @@ TOOLS_FILE = PROFILES_DIR / "tools" / "mcp_tools.json"
 
 
 def load_mcp_tools() -> dict[str, Any]:
-    """Load MCP tool definitions."""
-    with open(TOOLS_FILE, encoding="utf-8") as f:
-        data = json.load(f)
-    return {t["name"]: t for t in data.get("tools", [])}
+    """Load MCP tool definitions (outbound + optional inbound mcps/)."""
+    try:
+        from app.ax.tool_registry import get_tool_definitions
+
+        return get_tool_definitions()
+    except Exception:
+        with open(TOOLS_FILE, encoding="utf-8") as f:
+            data = json.load(f)
+        return {t["name"]: t for t in data.get("tools", [])}
 
 
 def load_agent_profiles() -> dict[str, dict[str, Any]]:
@@ -199,17 +204,40 @@ class MCPServer:
         if tool_name.startswith("agent_"):
             return await self._run_agent(tool_name, arguments, req_id)
 
-        # For utility tools, return a placeholder
+        try:
+            from app.ax.tool_registry import resolve_handler
+            import inspect
+
+            handler = resolve_handler(tool_name)
+            if handler is not None:
+                try:
+                    text = await handler(**arguments)
+                except TypeError:
+                    sig = inspect.signature(handler)
+                    filtered = {
+                        k: v for k, v in arguments.items() if k in sig.parameters
+                    }
+                    text = await handler(**filtered)
+                return {
+                    "jsonrpc": "2.0",
+                    "id": req_id,
+                    "result": {
+                        "content": [{"type": "text", "text": str(text)}],
+                    },
+                }
+        except Exception as e:
+            return {
+                "jsonrpc": "2.0",
+                "id": req_id,
+                "error": {"code": -32603, "message": str(e)},
+            }
+
         return {
             "jsonrpc": "2.0",
             "id": req_id,
-            "result": {
-                "content": [
-                    {
-                        "type": "text",
-                        "text": f"Tool '{tool_name}' called with: {json.dumps(arguments)}",
-                    }
-                ],
+            "error": {
+                "code": -32602,
+                "message": f"Tool '{tool_name}' has no runtime handler in Job Booster",
             },
         }
 

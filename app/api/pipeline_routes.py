@@ -1,16 +1,45 @@
-"""Unified Application Package Pipeline — one-click apply.
+"""Unified Application Package Pipeline — one-click apply and agent pipeline runs."""
 
-Routes delegate all business logic to ApplyService.
-"""
+from __future__ import annotations
 
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+import uuid
+from dataclasses import asdict, is_dataclass
+from typing import Any
+
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Query, UploadFile
 from loguru import logger
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
+from app.middleware.auth_middleware import get_current_user_dependency
+from app.models.db_models import User
+from app.pipelines.engine import load_pipeline_configs, run_pipeline
+from app.pipelines.state import PipelineState
 from app.services.apply_service import ApplyService
 from app.services.db_service import DatabaseService, get_db_session
 
 router = APIRouter(prefix="/pipeline", tags=["Pipeline"])
+
+# Pipelines that may exceed HTTP timeouts when run synchronously
+_BACKGROUND_PIPELINE_KEYS = frozenset({
+    "full_application",
+    "resume_only",
+    "job_search_only",
+    "cover_letter_only",
+    "outreach",
+    "interview_prep",
+})
+
+_background_jobs: dict[str, dict[str, Any]] = {}
+
+
+class PipelineRunRequest(BaseModel):
+    """Run a named agent pipeline."""
+
+    pipeline_key: str
+    resume_text: str = ""
+    job_text: str = ""
+    cv_text: str = ""
+    inputs: dict[str, Any] = Field(default_factory=dict)
 
 
 class PipelineApplyRequest(BaseModel):
@@ -42,14 +71,124 @@ class PipelineResult(BaseModel):
     job_id: int | None = None
 
 
-def _get_apply_service() -> ApplyService:
-    """Build ApplyService with a fresh DB session."""
-    db = get_db_session()
-    try:
-        return ApplyService(DatabaseService(db))
-    except Exception:
-        db.close()
-        raise
+def _serialize_artifact(value: Any) -> Any:
+    if hasattr(value, "model_dump"):
+        return value.model_dump()
+    if is_dataclass(value):
+        return asdict(value)
+    return value
+
+
+def serialize_pipeline_state(state: PipelineState) -> dict[str, Any]:
+    """Convert PipelineState to a JSON-serializable dict."""
+    artifacts = {
+        key: _serialize_artifact(val) for key, val in state.artifacts.items()
+    }
+    return {
+        "pipeline_name": state.pipeline_name,
+        "artifacts": artifacts,
+        "errors": state.errors,
+        "current_step": state.current_step,
+        "steps_completed": state.current_step + 1 if not state.errors else state.current_step,
+    }
+
+
+async def _execute_pipeline(request: PipelineRunRequest) -> PipelineState:
+    configs = load_pipeline_configs()
+    if request.pipeline_key not in configs:
+        raise HTTPException(status_code=404, detail=f"Unknown pipeline: {request.pipeline_key}")
+    return await run_pipeline(
+        pipeline_key=request.pipeline_key,
+        resume_text=request.resume_text,
+        job_text=request.job_text,
+        cv_text=request.cv_text,
+        inputs=request.inputs,
+    )
+
+
+@router.get("/list")
+async def pipeline_list():
+    """List available pipelines from pipelines.yaml."""
+    configs = load_pipeline_configs()
+    pipelines = [
+        {
+            "key": key,
+            "name": cfg.name,
+            "description": cfg.description,
+            "schedule": cfg.schedule,
+            "steps": [s.agent_key for s in cfg.steps],
+        }
+        for key, cfg in configs.items()
+    ]
+    return {"success": True, "pipelines": pipelines}
+
+
+@router.get("/run/{job_id}")
+async def pipeline_run_status(
+    job_id: str,
+    _user: User = Depends(get_current_user_dependency),
+):
+    """Poll a background pipeline run."""
+    job = _background_jobs.get(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    return {"success": True, **job}
+
+
+@router.post("/run")
+async def pipeline_run(
+    request: PipelineRunRequest,
+    background_tasks: BackgroundTasks,
+    background: bool = Query(False, description="Run in background for long LLM pipelines"),
+    _user: User = Depends(get_current_user_dependency),
+):
+    """Execute a named pipeline and return artifacts and errors."""
+    if background:
+        if request.pipeline_key not in _BACKGROUND_PIPELINE_KEYS:
+            logger.warning(
+                "Background run requested for short pipeline '{}'",
+                request.pipeline_key,
+            )
+        job_id = str(uuid.uuid4())
+        _background_jobs[job_id] = {"status": "running", "pipeline_key": request.pipeline_key}
+
+        async def _run_bg():
+            try:
+                state = await _execute_pipeline(request)
+                _background_jobs[job_id] = {
+                    "status": "completed",
+                    "pipeline_key": request.pipeline_key,
+                    "result": serialize_pipeline_state(state),
+                }
+            except HTTPException as e:
+                _background_jobs[job_id] = {
+                    "status": "failed",
+                    "pipeline_key": request.pipeline_key,
+                    "error": e.detail,
+                }
+            except Exception as e:
+                logger.error("Background pipeline failed: {}", e)
+                _background_jobs[job_id] = {
+                    "status": "failed",
+                    "pipeline_key": request.pipeline_key,
+                    "error": str(e),
+                }
+
+        background_tasks.add_task(_run_bg)
+
+        return {
+            "success": True,
+            "status": "accepted",
+            "job_id": job_id,
+            "message": "Pipeline running in background. Poll GET /api/pipeline/run/{job_id}.",
+        }
+
+    state = await _execute_pipeline(request)
+    return {
+        "success": True,
+        "status": "completed",
+        "data": serialize_pipeline_state(state),
+    }
 
 
 @router.post("/apply")
@@ -63,17 +202,16 @@ async def pipeline_apply(request: PipelineApplyRequest):
     try:
         svc = ApplyService(DatabaseService(db))
 
-        # Resolve resume
-        resume_text, resume_id, resume_record = await svc.resolve_resume_text(request.resume_id)
+        resume_text, resume_id, resume_record = await svc.resolve_resume_text(
+            request.resume_id
+        )
 
-        # Resolve job
         job_text, job_id, company_name = await svc.resolve_job_text(
             request.job_text or "",
             request.job_id,
             request.company_name or "",
         )
 
-        # Run pipeline
         result = await svc.run(
             resume_id=resume_id,
             job_text=job_text,

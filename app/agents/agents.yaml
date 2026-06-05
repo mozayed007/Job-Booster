@@ -17,15 +17,20 @@ agents:
     skill: "cv-extractor.md"
     system_prompt: "../prompts/cv_extractor_prompt.md"
 
+  discovery_sync:
+    name: "Discovery Sync"
+    description: "Imports BigSet exports and optional remote dataset planning before discovery agents"
+    enabled: true
+
   startup_scanner:
     name: "Startup Scanner"
-    description: "Scans startup career pages and extracts relevant AI/ML job openings"
+    description: "Scans company career pages and extracts job openings matched to user preferences"
     enabled: true
     system_prompt: "../prompts/job_extraction_prompt.md"
 
   job_finder:
     name: "Job Finder"
-    description: "Finds AI/ML job listings matching user profile"
+    description: "Finds job listings matching resume and user preferences"
     enabled: true
     skill: "job-finder.md"
     system_prompt: "../prompts/job_finder_prompt.md"

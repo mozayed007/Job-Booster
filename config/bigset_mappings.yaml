@@ -1,0 +1,46 @@
+# BigSet CSV column profiles. Keys are mapping_id values for /api/discovery/bigset/import.
+# filename_patterns: optional substrings to auto-select mapping from uploaded filename.
+
+# Company-level tables (one row per employer). Optional example mapping only.
+example_hiring_companies:
+  level: company
+  filename_patterns:
+    - hiring-companies
+    - companies-hiring
+  company_stub_title: "Open roles"
+  columns:
+    company: Company
+    website: Website
+    location: Location
+    funding_round: Stage
+    description: Product
+  open_roles_column: Open Roles
+
+# Back-compat alias for older exports / docs
+yc-w26-hiring:
+  level: company
+  filename_patterns:
+    - yc-w26
+    - ai-native
+    - hiring-engineers
+  company_stub_title: "Open roles"
+  columns:
+    company: Company
+    website: Website
+    location: Location
+    funding_round: Stage
+    description: Product
+  open_roles_column: Open Roles
+
+generic_job_listing:
+  level: job
+  filename_patterns:
+    - jobs
+    - roles
+    - openings
+  columns:
+    title: Title
+    company: Company
+    location: Location
+    url: URL
+    description: Description

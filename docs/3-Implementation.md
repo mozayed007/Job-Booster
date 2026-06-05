@@ -228,6 +228,30 @@ events = EventBus.history(limit=20)
 | POST | `/api/scanner/scan/background` | Start background scan |
 | GET | `/api/scanner/jobs/top` | Top jobs by relevance |
 
+### Job Discovery (`/api/discovery`)
+
+| Method | Path | Description |
+|---|---|---|
+| POST | `/api/discovery/search` | Search across job boards |
+| GET | `/api/discovery/sources` | List scraper availability (includes `bigset`) |
+| POST | `/api/discovery/index` | Index job dicts into DB + vector store |
+| GET | `/api/discovery/bigset/mappings` | List BigSet CSV column mapping profiles |
+| POST | `/api/discovery/bigset/import` | Multipart CSV/XLSX upload from BigSet export (auth required) |
+| POST | `/api/discovery/bigset/sync` | Folder watch import (auth required) |
+| GET | `/api/discovery/jobs/ranked` | Profile-fit ranked imported jobs; optional `query` for hybrid search |
+
+**BigSet sync workflow**
+
+1. Build or refresh a dataset in [tinyfish-io/bigset](https://github.com/tinyfish-io/bigset) (UI export CSV/XLSX), or enable `BIGSET_REMOTE_ENABLED` for experimental TinyFish Agent assist against `BIGSET_APP_URL`.
+2. Upload via `POST /api/discovery/bigset/import` with optional `mapping_id`, copy files into `data/bigset_imports/`, or run pipeline step `discovery_sync` / cron folder watch.
+3. Imports upsert `startups` and `job_postings`, index to Qdrant; agents use tools `search_imported_jobs`, `list_imported_startups`, and ranked prompt context.
+
+**AX (agent experience)**
+
+- Outbound tools: [`profiles/tools/mcp_tools.json`](profiles/tools/mcp_tools.json) plus optional merge of [`mcps/`](mcps/) descriptors (`AX_MERGE_INBOUND_MCPS`).
+- Runtime handlers: [`app/ax/tool_registry.py`](app/ax/tool_registry.py); MCP server [`profiles/runtimes/mcp_server.py`](profiles/runtimes/mcp_server.py) calls real handlers (not placeholders) for web and discovery tools.
+- Portable profiles: [`profiles/agents/discovery-sync.yaml`](profiles/agents/discovery-sync.yaml), updated job-finder and startup-scanner profiles.
+
 ### Search (`/api/search`)
 
 | Method | Path | Description |

@@ -24,8 +24,16 @@ from app.agents.base_agent import AgentConfig, BaseAgent
 from app.core.model_registry import init_ai_stack
 from app.models.startup_model import JobOpening, ScannerState, Startup, UserProfile
 from app.pipelines.state import PipelineState
+from app.services.bigset_import_service import (
+    list_imported_startups,
+    mark_startup_scanned,
+    should_skip_scrape,
+)
+from app.services.job_fit_service import jobs_for_company
+from app.services.db_service import get_db_session
 from app.services.scraper_service import get_scraper
 from app.services.startup_parser import parse_startups_file
+from app.services.user_profile_service import load_user_profile
 
 
 @contextmanager
@@ -54,7 +62,7 @@ class StartupScannerAgent(BaseAgent):
         state_file: Path | None = None,
     ):
         super().__init__(config, base_dir)
-        self.user_profile = user_profile or UserProfile()
+        self.user_profile = user_profile or load_user_profile()
         self.state_file = state_file or Path("scanner_state.json")
         self.scraper = get_scraper()
         self.state = self._load_state()
@@ -103,7 +111,37 @@ class StartupScannerAgent(BaseAgent):
         with _trace("extract_jobs", startup=startup_name):
             try:
                 content = career_content[:10000] if len(career_content) > 10000 else career_content
-                prompt = f"Startup: {startup_name}\n\nCareer Page Content:\n{content}"
+                profile_hint = ""
+                p = self.user_profile
+                if (
+                    p.skills
+                    or p.target_role_keywords
+                    or p.preferred_locations
+                    or p.preferred_categories
+                    or p.visa_support_required
+                ):
+                    skills = ", ".join(p.skills)
+                    roles = ", ".join(p.target_role_keywords)
+                    locations = ", ".join(p.preferred_locations)
+                    categories = ", ".join(p.preferred_categories)
+                    visa = (
+                        "required"
+                        if p.visa_support_required
+                        else "not specified"
+                    )
+                    profile_hint = (
+                        "\n\nCandidate preferences:\n"
+                        f"- Skills: {skills or 'derive from page'}\n"
+                        f"- Role keywords: {roles or 'any relevant roles'}\n"
+                        f"- Preferred locations: {locations or 'any'}\n"
+                        f"- Preferred categories: {categories or 'any'}\n"
+                        f"- Visa sponsorship: {visa}\n"
+                        "- Score relevance_score against these preferences.\n"
+                    )
+                prompt = (
+                    f"Startup: {startup_name}\n\nCareer Page Content:\n{content}"
+                    f"{profile_hint}"
+                )
 
                 result = await self.job_extractor.run(prompt)
 
@@ -133,15 +171,57 @@ class StartupScannerAgent(BaseAgent):
         if not startup.website:
             return []
 
+        db = get_db_session()
+        try:
+            if should_skip_scrape(db, startup.name):
+                logger.debug("Skipping recent scrape for {}", startup.name)
+                self.state.add_processed(startup.name)
+                mark_startup_scanned(
+                    db,
+                    startup.name,
+                    website=startup.website,
+                    city=startup.city,
+                )
+                return []
+        finally:
+            db.close()
+
         with _trace("scan_startup", name=startup.name, city=startup.city):
+            import_hint = ""
+            db_hint = get_db_session()
+            try:
+                stubs = jobs_for_company(db_hint, startup.name)
+                if stubs:
+                    import_hint = "\n\nKnown imported listings:\n" + "\n".join(
+                        f"- {j.title} ({j.location or 'n/a'})"
+                        for j in stubs[:5]
+                    )
+            finally:
+                db_hint.close()
+
             content = await self.scraper.scrape_careers(startup.website)
 
             if not content:
                 logger.debug(f"No career page found for {startup.name}")
+                self.state.add_processed(startup.name)
                 return []
 
-            jobs = await self.extract_jobs(startup.name, content)
+            jobs = await self.extract_jobs(
+                startup.name,
+                (content + import_hint) if import_hint else content,
+            )
             self.state.add_processed(startup.name)
+
+            db = get_db_session()
+            try:
+                mark_startup_scanned(
+                    db,
+                    startup.name,
+                    website=startup.website,
+                    city=startup.city,
+                )
+            finally:
+                db.close()
 
             return jobs
 
@@ -152,9 +232,21 @@ class StartupScannerAgent(BaseAgent):
     ) -> list[JobOpening]:
         """Process a batch of startups."""
         if startups is None:
-            all_startups = parse_startups_file()
+            file_startups = parse_startups_file()
+            db = get_db_session()
+            try:
+                imported = list_imported_startups(db)
+            finally:
+                db.close()
+            merged: list[Startup] = []
+            seen: set[str] = set()
+            for s in imported + file_startups:
+                if s.name not in seen and s.website:
+                    seen.add(s.name)
+                    merged.append(s)
             startups = [
-                s for s in all_startups if s.website and s.name not in self.state.processed_startups
+                s for s in merged
+                if s.name not in self.state.processed_startups
             ]
 
         batch = startups[:batch_size]
@@ -239,20 +331,51 @@ class StartupScannerAgent(BaseAgent):
         finally:
             db.close()
 
-    def get_top_roles(self, limit: int = 20) -> list[JobOpening]:
-        """Get top roles by relevance score."""
-        return self.state.promising_roles[:limit]
+    def get_top_roles(
+        self,
+        limit: int = 20,
+        city: str | None = None,
+    ) -> list[JobOpening]:
+        """Get top roles by relevance score, optionally filtered by startup city."""
+        roles = self.state.promising_roles
+        if city and city.strip().lower() != "all":
+            city_map = {
+                s.name.strip().lower(): s.city.strip().lower()
+                for s in self._merged_startups_with_website()
+            }
+            needle = city.strip().lower()
+            roles = [
+                r
+                for r in roles
+                if city_map.get(r.startup_name.strip().lower(), "") == needle
+            ]
+        return roles[:limit]
+
+    def _merged_startups_with_website(self) -> list[Startup]:
+        """Same merge as process_batch: BigSet imports + startups.md."""
+        file_startups = parse_startups_file()
+        db = get_db_session()
+        try:
+            imported = list_imported_startups(db)
+        finally:
+            db.close()
+        merged: list[Startup] = []
+        seen: set[str] = set()
+        for s in imported + file_startups:
+            if s.name not in seen and s.website:
+                seen.add(s.name)
+                merged.append(s)
+        return merged
 
     def get_progress(self) -> dict:
         """Get current scanning progress."""
-        all_startups = parse_startups_file()
-        with_websites = [s for s in all_startups if s.website]
-
+        with_websites = self._merged_startups_with_website()
+        processed = len(self.state.processed_startups)
         return {
-            "total_startups": len(all_startups),
+            "total_startups": len(with_websites),
             "with_websites": len(with_websites),
-            "processed": len(self.state.processed_startups),
-            "remaining": len(with_websites) - len(self.state.processed_startups),
+            "processed": processed,
+            "remaining": max(0, len(with_websites) - processed),
             "batch_number": self.state.batch_number,
             "promising_roles": len(self.state.promising_roles),
             "status": self.state.status,

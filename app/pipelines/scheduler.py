@@ -90,6 +90,60 @@ def schedule_pipeline(pipeline_key: str, cron_expression: str, **kwargs: Any) ->
     return job.id
 
 
+def schedule_bigset_folder_watch(cron_expression: str | None = None) -> str | None:
+    """Import changed CSV/XLSX files from BIGSET_IMPORT_DIR on a cron schedule."""
+    from app.core.config import settings
+
+    if not getattr(settings, "BIGSET_FOLDER_WATCH_ENABLED", True):
+        return None
+
+    scheduler = get_scheduler()
+    if scheduler is None:
+        return None
+
+    cron = cron_expression or getattr(
+        settings, "BIGSET_FOLDER_WATCH_CRON", "0 */6 * * *"
+    )
+    parts = cron.split()
+    if len(parts) != 5:
+        logger.error("Invalid BigSet folder-watch cron: {}", cron)
+        return None
+
+    minute, hour, day, month, day_of_week = parts
+    trigger = CronTrigger(
+        minute=minute,
+        hour=hour,
+        day=day,
+        month=month,
+        day_of_week=day_of_week,
+    )
+
+    async def _run():
+        from app.services.bigset_import_service import import_changed_files_in_dir
+
+        logger.info("BigSet folder watch triggered")
+        try:
+            results = await import_changed_files_in_dir()
+            for r in results:
+                logger.info(
+                    "BigSet import {}: stored={} startups={}",
+                    r.mapping_id,
+                    r.stored,
+                    r.startups_upserted,
+                )
+        except Exception as e:
+            logger.error("BigSet folder watch failed: {}", e)
+
+    job = scheduler.add_job(
+        _run,
+        trigger=trigger,
+        id="bigset_folder_watch",
+        name="BigSet: import folder",
+        replace_existing=True,
+    )
+    return job.id
+
+
 def start_scheduler() -> None:
     """Start the scheduler and register all pipelines with schedule configs."""
     scheduler = get_scheduler()
@@ -102,6 +156,8 @@ def start_scheduler() -> None:
     for key, config in configs.items():
         if config.schedule:
             schedule_pipeline(key, config.schedule)
+
+    schedule_bigset_folder_watch()
 
     if not scheduler.running:
         scheduler.start()

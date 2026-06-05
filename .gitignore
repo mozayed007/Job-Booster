@@ -1,6 +1,9 @@
 # Environment variables and secrets
 .env
+.env.*
+!.env.example
 *.env
+.bigset_import_state.json
 
 # Python
 __pycache__/
@@ -70,6 +73,10 @@ scanner_state.json
 # Planning / IDE artifacts
 .kilo/
 
+# Agentic experience (AX) — commit these; do not add mcps/ or profiles/
+# mcps/     inbound MCP tool schemas (GitHub, Notion, Supabase, …) for agents on this repo
+# profiles/ portable agent profiles + outbound MCP server (profiles/runtimes/mcp_server.py)
+
 # Generated output resumes (user-specific, do not commit)
 data/resumes/output/*
 !data/resumes/output/.gitkeep
@@ -83,3 +90,7 @@ node_modules/
 
 # Scraper-generated job data (JSON postings)
 data/jobs/*.json
+
+# BigSet CSV/XLSX exports (local datasets; keep folder via .gitkeep)
+data/bigset_imports/*
+!data/bigset_imports/.gitkeep

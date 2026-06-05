@@ -1,0 +1,14 @@
+# Optional job-search preferences. Copy to data/user_profile.yaml and edit.
+# Leave lists empty to derive targeting from resume text in agents instead.
+
+skills: []
+preferred_locations: []
+preferred_categories: []
+visa_support_required: false
+target_role_keywords: []
+
+bigset:
+  enabled: true
+  prefer_imported_jobs: true
+  min_fit_score: 0.25
+  default_mapping: generic_job_listing
