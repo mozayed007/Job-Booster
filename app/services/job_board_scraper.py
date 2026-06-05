@@ -354,7 +354,7 @@ SCRAPERS: dict[str, type[BaseJobBoardScraper]] = {
 
 def get_available_sources() -> dict[str, bool]:
     """Return which sources are available."""
-    result = {}
+    result = {"bigset": True}
     for name, cls in SCRAPERS.items():
         try:
             instance = cls()

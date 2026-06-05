@@ -93,7 +93,8 @@ Agents compose into typed workflows defined in `pipelines.yaml`:
 |----------|-------|---------|
 | **Full Application** | CV Extract → Resume Review → Cover Letter → Job Find | On-demand |
 | **Resume Only** | CV Extract → Resume Review | On-demand |
-| **Daily Scanner** | Startup Scanner | Cron (9 AM daily) |
+| **Discovery Sync Only** | Discovery Sync | On-demand / before import pipelines |
+| **Daily Scanner** | Discovery Sync → Startup Scanner | Cron (9 AM daily) |
 | **Cover Letter Only** | Cover Letter | On-demand |
 | **Job Search Only** | Job Finder | On-demand |
 | **Outreach** | Outreach Agent | On-demand |
@@ -145,6 +146,17 @@ python scripts/run_app.py
 - **API docs**: http://localhost:8000/docs
 - **Health check**: http://localhost:8000/health
 - **Model status**: http://localhost:8000/health/models
+
+### Discovery workflow (Gradio)
+
+1. **Account** — sign in; edit profile (skills, locations, BigSet preferences).
+2. **Discovery → Imported corpus** — preview CSV/XLSX columns, import or sync `data/bigset_imports/`, load ranked jobs.
+3. **Discovery → Job boards** — search external boards and index results.
+4. **Pipelines** — run `discovery_sync_only` or `daily_scanner` on demand.
+5. **Scanner** — batch-scan company career pages; filter by city.
+6. **Apply** — paste a ranked job into the job description field and generate a package.
+
+Optional: enable remote BigSet dataset planning with `BIGSET_REMOTE_ENABLED`, `BIGSET_APP_URL`, and `TINYFISH_API_KEY` (see `.env.example`).
 
 ---
 

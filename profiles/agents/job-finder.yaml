@@ -38,6 +38,12 @@ specialization:
 
 requirements:
   tools:
+    - name: search_imported_jobs
+      type: api
+      description: "Search imported BigSet corpus before open web (fit-ranked JSON)"
+    - name: list_imported_startups
+      type: api
+      description: "List employers from BigSet imports with fit hints"
     - name: web_search
       type: api
       description: "Search the web for current job listings and company info"
@@ -77,6 +83,11 @@ instructions: |
   | Seniority level | Infer from resume |
 
   ---
+
+  ## Step 0: Imported corpus (BigSet)
+
+  When available, call `search_imported_jobs` and `list_imported_startups` first.
+  Prefer high fit_score rows from the imported dataset before broad web search.
 
   ## Step 1: Build Targeted Search Queries
 

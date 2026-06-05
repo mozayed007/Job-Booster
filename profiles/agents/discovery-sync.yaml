@@ -1,0 +1,51 @@
+meta:
+  name: discovery-sync
+  display_name: Discovery Sync
+  version: "1.0.0"
+  description: >
+    Syncs BigSet CSV/XLSX imports from the watch folder, optionally plans
+    a remote dataset build via TinyFish Agent, and refreshes the discovery index.
+  author: Job_Booster
+  license: MIT
+  tags: [bigset, discovery, sync, import]
+
+requirements:
+  tools:
+    - name: sync_bigset_folder
+      type: api
+      description: "Import changed files from BIGSET_IMPORT_DIR"
+    - name: list_bigset_mappings
+      type: api
+      description: "List column mapping profiles for BigSet exports"
+  llm:
+    min_capability: "none"
+    preferred_models: []
+    context_window: 4000
+
+instructions: |
+  # Discovery Sync
+
+  Run before startup-scanner or job-finder when pipelines include this step.
+
+  1. Optionally generate a dataset goal from user profile (saved for manual BigSet UI).
+  2. If BIGSET_REMOTE_ENABLED, attempt TinyFish Agent automation against BIGSET_APP_URL.
+  3. Import changed CSV/XLSX from BIGSET_IMPORT_DIR into SQLite and vector index.
+
+io:
+  inputs:
+    - name: force_remote
+      type: boolean
+      required: false
+      default: false
+      description: "Attempt remote dataset build even if disabled in env"
+  outputs:
+    - name: import_files
+      type: number
+    - name: jobs_stored
+      type: number
+    - name: dataset_goal
+      type: string
+
+adapters:
+  cursor:
+    trigger: "sync bigset, import discovery folder, refresh imported jobs"

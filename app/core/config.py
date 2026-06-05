@@ -33,6 +33,21 @@ class Settings(BaseSettings):
     STARTUPS_FILE_PATH: str = "data/startups/startups.md"
     JOBS_DIR: str = "data/jobs"
 
+    USER_PROFILE_PATH: str = "data/user_profile.yaml"
+
+    BIGSET_IMPORT_DIR: str = "data/bigset_imports"
+    BIGSET_DEFAULT_MAPPING: str = "generic_job_listing"
+    BIGSET_SKIP_SCRAPE_HOURS: int = 0
+    BIGSET_FOLDER_WATCH_CRON: str = "0 */6 * * *"
+    BIGSET_FOLDER_WATCH_ENABLED: bool = True
+    BIGSET_MAX_UPLOAD_BYTES: int = 52_428_800
+    BIGSET_REMOTE_ENABLED: bool = False
+    BIGSET_APP_URL: str = "http://localhost:3500"
+    BIGSET_AUTO_SYNC_ON_PIPELINE: bool = True
+
+    AX_MCPS_DIR: str = "mcps"
+    AX_MERGE_INBOUND_MCPS: bool = True
+
     model_config = {"env_file": ".env", "case_sensitive": True, "extra": "ignore"}
 
 

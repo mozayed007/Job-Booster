@@ -30,7 +30,9 @@ class JobOpening(BaseModel):
     requirements: list[str] = Field(default_factory=list)
     link: str
     relevance_score: float = Field(
-        ge=0.0, le=1.0, description="0-1 score based on match to AI/ML/GPU/distributed systems"
+        ge=0.0,
+        le=1.0,
+        description="0-1 score based on match to the user's skills and preferences",
     )
 
     model_config = {"extra": "ignore"}
@@ -61,33 +63,28 @@ class ScannerState(BaseModel):
         self.last_updated = datetime.now()
 
 
-class UserProfile(BaseModel):
-    """User's background for relevance scoring"""
+class BigSetPreferences(BaseModel):
+    """BigSet import and discovery preferences."""
 
-    skills: list[str] = Field(
-        default_factory=lambda: [
-            "AI/ML",
-            "Deep Learning",
-            "GPU/CUDA",
-            "Distributed Systems",
-            "MoE",
-            "Multimodal",
-            "EEG",
-            "Scaling",
-            "Research",
-            "Python",
-        ]
+    enabled: bool = True
+    prefer_imported_jobs: bool = True
+    min_fit_score: float = Field(default=0.25, ge=0.0, le=1.0)
+    default_mapping: str = "generic_job_listing"
+
+    model_config = {"extra": "ignore"}
+
+
+class UserProfile(BaseModel):
+    """User job-search preferences. Load from data/user_profile.yaml or pass explicitly."""
+
+    skills: list[str] = Field(default_factory=list)
+    preferred_locations: list[str] = Field(default_factory=list)
+    preferred_categories: list[str] = Field(default_factory=list)
+    visa_support_required: bool = False
+    target_role_keywords: list[str] = Field(
+        default_factory=list,
+        description="Optional role title keywords (e.g. engineer, analyst)",
     )
-    preferred_locations: list[str] = Field(default_factory=lambda: ["Remote", "EU", "Cairo"])
-    preferred_categories: list[str] = Field(
-        default_factory=lambda: [
-            "Medicine",
-            "NLP",
-            "Robotics",
-            "Science & Engineering",
-            "Business",
-            "Consulting",
-            "Other",
-        ]
-    )
-    visa_support_required: bool = True
+    bigset: BigSetPreferences = Field(default_factory=BigSetPreferences)
+
+    model_config = {"extra": "ignore"}

@@ -141,10 +141,11 @@ async def scan_batch_background(
 @router.get("/jobs/top", response_model=list[JobOpening])
 async def get_top_jobs(
     limit: int = Query(20, ge=1, le=100, description="Number of jobs to return"),
+    city: str | None = Query(None, description="Filter by startup city"),
 ):
     """Get top job openings ranked by relevance score."""
     agent = get_agent()
-    return agent.get_top_roles(limit=limit)
+    return agent.get_top_roles(limit=limit, city=city)
 
 
 @router.post("/reset")

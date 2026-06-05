@@ -14,6 +14,8 @@ pipelines:
         description: "Review and polish resume bullets using XYZ formula"
       - agent: cover_letter_generator
         description: "Generate tailored cover letter"
+      - agent: discovery_sync
+        description: "Import BigSet exports before job search"
       - agent: job_finder
         description: "Find matching job opportunities"
 
@@ -27,12 +29,22 @@ pipelines:
       - agent: resume_reviewer
         description: "Review and polish resume bullets using XYZ formula"
 
+  discovery_sync_only:
+    name: "Discovery Sync Only"
+    description: "Import BigSet folder exports and optional remote dataset planning"
+    enabled: true
+    steps:
+      - agent: discovery_sync
+        description: "Sync BigSet imports into startups and job tables"
+
   daily_scanner:
     name: "Daily Startup Scanner"
-    description: "Scan startup career pages for relevant AI/ML job openings"
+    description: "Scan company career pages for job openings matched to user preferences"
     enabled: true
     schedule: "0 9 * * *"
     steps:
+      - agent: discovery_sync
+        description: "Import BigSet exports and refresh discovery index"
       - agent: startup_scanner
         description: "Scan startup career pages and extract job openings"
 
@@ -49,6 +61,8 @@ pipelines:
     description: "Find job opportunities matching a resume"
     enabled: true
     steps:
+      - agent: discovery_sync
+        description: "Import BigSet exports before job search"
       - agent: job_finder
         description: "Find matching job opportunities"
 

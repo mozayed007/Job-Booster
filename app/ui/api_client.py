@@ -17,6 +17,18 @@ load_dotenv()
 API_URL = os.getenv("API_URL", "http://localhost:8000")
 
 
+def _auth_headers(token: str | None) -> dict[str, str]:
+    if token and token.strip():
+        return {"Authorization": f"Bearer {token.strip()}"}
+    return {}
+
+
+def _unwrap(data: dict) -> dict:
+    if data.get("success"):
+        return data.get("data", data)
+    return {"Error": data.get("message", data.get("detail", "Unknown error"))}
+
+
 # ---------------------------------------------------------------------------
 # Parse endpoints
 # ---------------------------------------------------------------------------
@@ -339,6 +351,54 @@ async def dashboard(resume_id: int | None = None) -> dict:
 # ---------------------------------------------------------------------------
 
 
+async def pipeline_list() -> dict:
+    """GET /api/pipeline/list."""
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        resp = await client.get(f"{API_URL}/api/pipeline/list")
+        return resp.json()
+
+
+async def pipeline_run(
+    token: str,
+    pipeline_key: str,
+    *,
+    resume_text: str = "",
+    job_text: str = "",
+    cv_text: str = "",
+    inputs: dict | None = None,
+    background: bool = False,
+) -> dict:
+    """POST /api/pipeline/run (requires auth)."""
+    async with httpx.AsyncClient(timeout=600.0) as client:
+        resp = await client.post(
+            f"{API_URL}/api/pipeline/run",
+            params={"background": background} if background else None,
+            json={
+                "pipeline_key": pipeline_key,
+                "resume_text": resume_text,
+                "job_text": job_text,
+                "cv_text": cv_text,
+                "inputs": inputs or {},
+            },
+            headers=_auth_headers(token),
+        )
+        if resp.status_code == 401:
+            return {"Error": "Login required"}
+        return resp.json()
+
+
+async def pipeline_run_status(token: str, job_id: str) -> dict:
+    """GET /api/pipeline/run/{job_id}."""
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        resp = await client.get(
+            f"{API_URL}/api/pipeline/run/{job_id}",
+            headers=_auth_headers(token),
+        )
+        if resp.status_code == 401:
+            return {"Error": "Login required"}
+        return resp.json()
+
+
 async def pipeline_apply(
     resume_file: str, job_text: str, company_name: str, hiring_manager: str, format_type: str
 ) -> dict:
@@ -388,3 +448,233 @@ async def discovery_index(jobs: list) -> dict:
         if data.get("success"):
             return data
         return {"Error": data.get("message", "Unknown error")}
+
+
+async def discovery_sources() -> dict:
+    """GET /api/discovery/sources."""
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        resp = await client.get(f"{API_URL}/api/discovery/sources")
+        return resp.json()
+
+
+async def discovery_ranked_jobs(
+    token: str,
+    *,
+    limit: int = 25,
+    min_score: float | None = None,
+    query: str = "",
+) -> dict:
+    """GET /api/discovery/jobs/ranked (requires auth)."""
+    params: dict = {"limit": limit}
+    if min_score is not None:
+        params["min_score"] = min_score
+    if query.strip():
+        params["query"] = query.strip()
+    async with httpx.AsyncClient(timeout=120.0) as client:
+        resp = await client.get(
+            f"{API_URL}/api/discovery/jobs/ranked",
+            params=params,
+            headers=_auth_headers(token),
+        )
+        if resp.status_code == 401:
+            return {"Error": "Login required — use Account tab to get a token"}
+        data = resp.json()
+        if data.get("success"):
+            return data
+        return {"Error": data.get("detail", data.get("message", resp.text))}
+
+
+async def discovery_bigset_sync(token: str) -> dict:
+    """POST /api/discovery/bigset/sync (requires auth)."""
+    async with httpx.AsyncClient(timeout=300.0) as client:
+        resp = await client.post(
+            f"{API_URL}/api/discovery/bigset/sync",
+            headers=_auth_headers(token),
+        )
+        if resp.status_code == 401:
+            return {"Error": "Login required"}
+        return resp.json()
+
+
+async def discovery_bigset_mappings() -> dict:
+    """GET /api/discovery/bigset/mappings."""
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        resp = await client.get(f"{API_URL}/api/discovery/bigset/mappings")
+        return resp.json()
+
+
+async def discovery_bigset_preview(
+    token: str,
+    file_path: str,
+    mapping_id: str | None = None,
+) -> dict:
+    """POST /api/discovery/bigset/preview (requires auth)."""
+    path = Path(file_path)
+    async with httpx.AsyncClient(timeout=120.0) as client:
+        with open(file_path, "rb") as f:
+            files = {"file": (path.name, f)}
+            data = {}
+            if mapping_id and mapping_id.strip():
+                data["mapping_id"] = mapping_id.strip()
+            resp = await client.post(
+                f"{API_URL}/api/discovery/bigset/preview",
+                files=files,
+                data=data,
+                headers=_auth_headers(token),
+            )
+        if resp.status_code == 401:
+            return {"Error": "Login required"}
+        try:
+            return resp.json()
+        except Exception:
+            return {"Error": resp.text or f"HTTP {resp.status_code}"}
+
+
+async def discovery_bigset_remote_status(token: str) -> dict:
+    """GET /api/discovery/bigset/remote/status."""
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        resp = await client.get(
+            f"{API_URL}/api/discovery/bigset/remote/status",
+            headers=_auth_headers(token),
+        )
+        if resp.status_code == 401:
+            return {"Error": "Login required"}
+        return resp.json()
+
+
+async def discovery_bigset_remote_trigger(token: str, force: bool = False) -> dict:
+    """POST /api/discovery/bigset/remote/trigger."""
+    async with httpx.AsyncClient(timeout=300.0) as client:
+        resp = await client.post(
+            f"{API_URL}/api/discovery/bigset/remote/trigger",
+            json={"force": force},
+            headers=_auth_headers(token),
+        )
+        if resp.status_code == 401:
+            return {"Error": "Login required"}
+        return resp.json()
+
+
+async def discovery_bigset_import(
+    token: str,
+    file_path: str,
+    mapping_id: str | None = None,
+) -> dict:
+    """POST /api/discovery/bigset/import (requires auth)."""
+    path = Path(file_path)
+    async with httpx.AsyncClient(timeout=300.0) as client:
+        with open(file_path, "rb") as f:
+            files = {"file": (path.name, f)}
+            data = {}
+            if mapping_id and mapping_id.strip():
+                data["mapping_id"] = mapping_id.strip()
+            resp = await client.post(
+                f"{API_URL}/api/discovery/bigset/import",
+                files=files,
+                data=data,
+                headers=_auth_headers(token),
+            )
+        if resp.status_code == 401:
+            return {"Error": "Login required"}
+        try:
+            return resp.json()
+        except Exception:
+            return {"Error": resp.text or f"HTTP {resp.status_code}"}
+
+
+# ---------------------------------------------------------------------------
+# Scanner
+# ---------------------------------------------------------------------------
+
+
+async def scanner_progress() -> dict:
+    """GET /api/scanner/progress."""
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        resp = await client.get(f"{API_URL}/api/scanner/progress")
+        return resp.json()
+
+
+async def scanner_scan_batch(batch_size: int) -> dict:
+    """POST /api/scanner/scan/batch."""
+    async with httpx.AsyncClient(timeout=300.0) as client:
+        resp = await client.post(
+            f"{API_URL}/api/scanner/scan/batch",
+            params={"batch_size": int(batch_size)},
+        )
+        return resp.json()
+
+
+async def scanner_reset() -> dict:
+    """POST /api/scanner/reset."""
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        resp = await client.post(f"{API_URL}/api/scanner/reset")
+        return resp.json()
+
+
+async def scanner_top_jobs(limit: int = 50, city: str | None = None) -> list:
+    """GET /api/scanner/jobs/top."""
+    params: dict = {"limit": limit}
+    if city and city.strip().lower() != "all":
+        params["city"] = city.strip()
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        resp = await client.get(
+            f"{API_URL}/api/scanner/jobs/top",
+            params=params,
+        )
+        data = resp.json()
+        if isinstance(data, list):
+            return data
+        return data.get("jobs", [])
+
+
+async def scanner_cities() -> dict:
+    """GET /api/scanner/cities."""
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        resp = await client.get(f"{API_URL}/api/scanner/cities")
+        return resp.json()
+
+
+# ---------------------------------------------------------------------------
+# Settings profile
+# ---------------------------------------------------------------------------
+
+
+async def settings_get_profile(token: str) -> dict:
+    """GET /api/settings/profile."""
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        resp = await client.get(
+            f"{API_URL}/api/settings/profile",
+            headers=_auth_headers(token),
+        )
+        if resp.status_code == 401:
+            return {"Error": "Login required"}
+        return resp.json()
+
+
+async def settings_put_profile(token: str, profile: dict) -> dict:
+    """PUT /api/settings/profile."""
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        resp = await client.put(
+            f"{API_URL}/api/settings/profile",
+            json=profile,
+            headers=_auth_headers(token),
+        )
+        if resp.status_code == 401:
+            return {"Error": "Login required"}
+        try:
+            return resp.json()
+        except Exception:
+            return {"Error": resp.text or f"HTTP {resp.status_code}"}
+
+
+async def health_check() -> dict:
+    """GET /health or root — lightweight API reachability."""
+    async with httpx.AsyncClient(timeout=5.0) as client:
+        for path in ("/health", "/api/health", "/"):
+            try:
+                resp = await client.get(f"{API_URL}{path}")
+                if resp.status_code < 500:
+                    return {"ok": True, "status": resp.status_code, "path": path}
+            except Exception:
+                continue
+        return {"ok": False, "Error": f"Cannot reach API at {API_URL}"}

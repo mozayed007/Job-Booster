@@ -252,26 +252,39 @@ class DatabaseService:
             logger.error(f"Error storing cover letter: {e}")
             return None
 
-    def store_scraped_jobs_batch(self, jobs: list[dict[str, Any]]) -> list[int]:
+    def store_scraped_jobs_batch(
+        self,
+        jobs: list[dict[str, Any]],
+        *,
+        dedupe: bool = False,
+    ) -> list[int]:
         """Bulk-insert scraped job postings into the job_postings table.
 
         Args:
             jobs: list of dicts with keys: title, company, location, raw_text,
                   source_url, parsed_data (optional).
+            dedupe: skip rows that match an existing posting (by URL or company+title).
 
         Returns:
             List of inserted record IDs.
         """
+        from app.services.job_dedupe import find_existing_job
+
         inserted_ids: list[int] = []
         try:
             for job_data in jobs:
+                company = job_data.get("company") or ""
+                title = job_data.get("title", "")
+                url = job_data.get("source_url") or ""
+                if dedupe and find_existing_job(self.db, company, title, url):
+                    continue
                 job_db = JobPostingDB(
-                    title=job_data.get("title", ""),
-                    company=job_data.get("company"),
+                    title=title,
+                    company=company or None,
                     location=job_data.get("location"),
                     content_json=job_data.get("parsed_data"),
                     raw_text=job_data.get("raw_text"),
-                    source_url=job_data.get("source_url"),
+                    source_url=url or None,
                 )
                 self.db.add(job_db)
                 self.db.flush()

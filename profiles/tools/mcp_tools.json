@@ -109,6 +109,50 @@
         }
       },
       "optional": true
+    },
+    {
+      "name": "search_imported_jobs",
+      "description": "Search imported BigSet job postings (semantic + profile fit). Returns JSON.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "query": { "type": "string", "description": "Search query" },
+          "limit": { "type": "integer", "default": 10, "minimum": 1, "maximum": 25 }
+        },
+        "required": ["query"]
+      }
+    },
+    {
+      "name": "list_imported_startups",
+      "description": "List BigSet-imported companies with websites and fit hints.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "limit": { "type": "integer", "default": 20, "minimum": 1, "maximum": 50 }
+        }
+      }
+    },
+    {
+      "name": "list_bigset_mappings",
+      "description": "List BigSet CSV/XLSX column mapping profiles.",
+      "inputSchema": { "type": "object", "properties": {} }
+    },
+    {
+      "name": "sync_bigset_folder",
+      "description": "Import new/changed CSV/XLSX files from BIGSET_IMPORT_DIR.",
+      "inputSchema": { "type": "object", "properties": {} }
+    },
+    {
+      "name": "imported_jobs_for_company",
+      "description": "Get imported job rows for a single company.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "company": { "type": "string" },
+          "limit": { "type": "integer", "default": 5 }
+        },
+        "required": ["company"]
+      }
     }
   ]
 }

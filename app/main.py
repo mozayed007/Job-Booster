@@ -12,6 +12,7 @@ from app.api.auth_routes import router as auth_router
 from app.api.dashboard_routes import router as dashboard_router
 from app.api.discovery_routes import router as discovery_router
 from app.api.pipeline_routes import router as pipeline_router
+from app.api.settings_routes import router as settings_router
 from app.api.recommendation_routes import router as recommendation_router
 from app.api.resume_routes import router as resume_router
 from app.api.scanner_routes import router as scanner_router
@@ -35,9 +36,21 @@ async def lifespan(app: FastAPI):
         await get_registry().probe_local_providers()
     except Exception as e:
         logger.warning(f"AI stack init failed (non-fatal): {e}")
+    try:
+        from app.pipelines.scheduler import start_scheduler
+
+        start_scheduler()
+    except Exception as e:
+        logger.warning("Scheduler start failed (non-fatal): {}", e)
     logger.info("Job_Booster API ready")
     yield
     # Shutdown
+    try:
+        from app.pipelines.scheduler import stop_scheduler
+
+        stop_scheduler()
+    except Exception:
+        pass
     logger.info("Shutting down Job_Booster API")
 
 
@@ -70,6 +83,7 @@ app.include_router(analytics_router, prefix="/api")
 app.include_router(pipeline_router, prefix="/api")
 app.include_router(discovery_router, prefix="/api")
 app.include_router(dashboard_router, prefix="/api")
+app.include_router(settings_router, prefix="/api")
 
 
 @app.get("/", tags=["Health"])
