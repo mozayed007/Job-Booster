@@ -48,6 +48,11 @@ class Settings(BaseSettings):
     AX_MCPS_DIR: str = "mcps"
     AX_MERGE_INBOUND_MCPS: bool = True
 
+    PIPELINE_BACKGROUND_JOB_TTL_SECONDS: int = 86_400
+    PIPELINE_BACKGROUND_JOB_MAX_ENTRIES: int = 200
+    PIPELINE_UI_POLL_INTERVAL_SECONDS: float = 2.0
+    PIPELINE_UI_POLL_MAX_ATTEMPTS: int = 60
+
     model_config = {"env_file": ".env", "case_sensitive": True, "extra": "ignore"}
 
 

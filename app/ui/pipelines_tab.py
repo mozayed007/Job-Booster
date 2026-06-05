@@ -4,6 +4,7 @@ import time
 
 import gradio as gr
 
+from app.core.config import settings
 from app.ui.api_client import pipeline_list, pipeline_run, pipeline_run_status
 from app.ui.helpers import run_async
 
@@ -16,6 +17,25 @@ _TEXT_PIPELINES = frozenset({
     "interview_prep",
 })
 _SYNC_PIPELINES = frozenset({"discovery_sync_only", "daily_scanner"})
+
+
+def _poll_background_job(token: str, job_id: str) -> dict:
+    """Poll until completed, failed, or timeout."""
+    interval = settings.PIPELINE_UI_POLL_INTERVAL_SECONDS
+    max_attempts = settings.PIPELINE_UI_POLL_MAX_ATTEMPTS
+    status: dict = {"status": "running", "job_id": job_id}
+    for _ in range(max_attempts):
+        status = run_async(pipeline_run_status(token, job_id.strip()))
+        if status.get("status") in ("completed", "failed"):
+            return status
+        if status.get("Error"):
+            return status
+        time.sleep(interval)
+    status.setdefault(
+        "message",
+        f"Still running after {max_attempts * interval:.0f}s; use Poll to check again.",
+    )
+    return status
 
 
 def build_pipelines_tab(api_token) -> tuple:
@@ -79,7 +99,10 @@ def build_pipelines_tab(api_token) -> tuple:
                 )
             )
             if out.get("status") == "accepted" and out.get("job_id"):
-                return out, out["job_id"], gr.Button(visible=True)
+                job_id = out["job_id"]
+                status = _poll_background_job(token, job_id)
+                still_running = status.get("status") == "running"
+                return status, job_id, gr.Button(visible=still_running)
             return out, "", gr.Button(visible=False)
         except Exception as e:
             return {"Error": str(e)}, "", gr.Button(visible=False)
@@ -88,12 +111,7 @@ def build_pipelines_tab(api_token) -> tuple:
         if not job_id or not token:
             return {"Error": "Need job ID and token"}
         try:
-            for _ in range(3):
-                status = run_async(pipeline_run_status(token, job_id.strip()))
-                if status.get("status") in ("completed", "failed"):
-                    return status
-                time.sleep(1)
-            return status
+            return _poll_background_job(token, job_id)
         except Exception as e:
             return {"Error": str(e)}
 

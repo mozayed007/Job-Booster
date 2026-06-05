@@ -50,6 +50,10 @@ def build_auth_tab(api_token) -> None:
             prof_roles = gr.Textbox(label="Target role keywords", lines=2)
             prof_visa = gr.Checkbox(label="Visa sponsorship required")
             prof_bigset_enabled = gr.Checkbox(label="BigSet import enabled", value=True)
+            prof_prefer_imported = gr.Checkbox(
+                label="Prefer imported corpus over web search",
+                value=True,
+            )
             prof_min_fit = gr.Slider(0, 1, value=0.25, step=0.05, label="Min fit score")
             prof_default_mapping = gr.Textbox(
                 label="Default mapping id",
@@ -93,11 +97,17 @@ def build_auth_tab(api_token) -> None:
 
     def load_profile_fields(token):
         if not token:
-            return ("", "", "", "", False, True, 0.25, "generic_job_listing", {"Error": "Sign in first"})
+            return (
+                "", "", "", "", False, True, True, 0.25, "generic_job_listing",
+                {"Error": "Sign in first"},
+            )
         try:
             data = run_async(settings_get_profile(token))
             if data.get("Error"):
-                return ("", "", "", "", False, True, 0.25, "generic_job_listing", data)
+                return (
+                    "", "", "", "", False, True, True, 0.25, "generic_job_listing",
+                    data,
+                )
             p = data.get("profile", data)
             bs = p.get("bigset", {}) or {}
             return (
@@ -107,14 +117,20 @@ def build_auth_tab(api_token) -> None:
                 _join_list(p.get("target_role_keywords", [])),
                 bool(p.get("visa_support_required", False)),
                 bool(bs.get("enabled", True)),
+                bool(bs.get("prefer_imported_jobs", True)),
                 float(bs.get("min_fit_score", 0.25)),
                 str(bs.get("default_mapping", "generic_job_listing")),
                 {"success": True},
             )
         except Exception as e:
-            return ("", "", "", "", False, True, 0.25, "generic_job_listing", {"Error": str(e)})
+            return (
+                "", "", "", "", False, True, True, 0.25, "generic_job_listing",
+                {"Error": str(e)},
+            )
 
-    def save_profile_fields(token, skills, locs, cats, roles, visa, bs_en, min_fit, mapping):
+    def save_profile_fields(
+        token, skills, locs, cats, roles, visa, bs_en, prefer_imported, min_fit, mapping,
+    ):
         if not token:
             return {"Error": "Sign in first"}
         profile = {
@@ -125,7 +141,7 @@ def build_auth_tab(api_token) -> None:
             "visa_support_required": bool(visa),
             "bigset": {
                 "enabled": bool(bs_en),
-                "prefer_imported_jobs": True,
+                "prefer_imported_jobs": bool(prefer_imported),
                 "min_fit_score": float(min_fit),
                 "default_mapping": (mapping or "generic_job_listing").strip(),
             },
@@ -162,6 +178,7 @@ def build_auth_tab(api_token) -> None:
             prof_roles,
             prof_visa,
             prof_bigset_enabled,
+            prof_prefer_imported,
             prof_min_fit,
             prof_default_mapping,
             profile_save_result,
@@ -177,6 +194,7 @@ def build_auth_tab(api_token) -> None:
             prof_roles,
             prof_visa,
             prof_bigset_enabled,
+            prof_prefer_imported,
             prof_min_fit,
             prof_default_mapping,
         ],

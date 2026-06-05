@@ -30,18 +30,6 @@ def load_user_profile(path: Path | None = None) -> UserProfile:
 
 
 def save_user_profile(profile: UserProfile, path: Path | None = None) -> Path:
-    """Persist profile to YAML."""
-    profile_path = path or Path(getattr(settings, "USER_PROFILE_PATH", str(_DEFAULT_PATH)))
-    profile_path.parent.mkdir(parents=True, exist_ok=True)
-    data = profile.model_dump(mode="json")
-    profile_path.write_text(
-        yaml.safe_dump(data, sort_keys=False, allow_unicode=True),
-        encoding="utf-8",
-    )
-    return profile_path
-
-
-def save_user_profile(profile: UserProfile, path: Path | None = None) -> Path:
     """Persist profile to YAML; creates parent dirs if needed."""
     profile_path = path or Path(getattr(settings, "USER_PROFILE_PATH", str(_DEFAULT_PATH)))
     profile_path.parent.mkdir(parents=True, exist_ok=True)
