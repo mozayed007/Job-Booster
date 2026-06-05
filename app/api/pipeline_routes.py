@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import time
 import uuid
 from dataclasses import asdict, is_dataclass
 from typing import Any
@@ -10,6 +11,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPExcepti
 from loguru import logger
 from pydantic import BaseModel, Field
 
+from app.core.config import settings
 from app.middleware.auth_middleware import get_current_user_dependency
 from app.models.db_models import User
 from app.pipelines.engine import load_pipeline_configs, run_pipeline
@@ -30,6 +32,40 @@ _BACKGROUND_PIPELINE_KEYS = frozenset({
 })
 
 _background_jobs: dict[str, dict[str, Any]] = {}
+
+
+def _prune_background_jobs() -> None:
+    """Drop expired entries and cap in-memory job history."""
+    now = time.time()
+    ttl = settings.PIPELINE_BACKGROUND_JOB_TTL_SECONDS
+    max_entries = settings.PIPELINE_BACKGROUND_JOB_MAX_ENTRIES
+
+    expired = [
+        job_id
+        for job_id, job in _background_jobs.items()
+        if now - float(job.get("_updated_at", job.get("_created_at", now))) > ttl
+    ]
+    for job_id in expired:
+        del _background_jobs[job_id]
+
+    if len(_background_jobs) <= max_entries:
+        return
+    ordered = sorted(
+        _background_jobs.items(),
+        key=lambda item: float(item[1].get("_updated_at", item[1].get("_created_at", 0))),
+    )
+    for job_id, _ in ordered[: len(_background_jobs) - max_entries]:
+        del _background_jobs[job_id]
+
+
+def _set_background_job(job_id: str, payload: dict[str, Any]) -> None:
+    """Store or update a background job record with timestamps."""
+    _prune_background_jobs()
+    now = time.time()
+    existing = _background_jobs.get(job_id, {})
+    payload["_created_at"] = existing.get("_created_at", now)
+    payload["_updated_at"] = now
+    _background_jobs[job_id] = payload
 
 
 class PipelineRunRequest(BaseModel):
@@ -129,10 +165,14 @@ async def pipeline_run_status(
     _user: User = Depends(get_current_user_dependency),
 ):
     """Poll a background pipeline run."""
+    _prune_background_jobs()
     job = _background_jobs.get(job_id)
     if not job:
-        raise HTTPException(status_code=404, detail="Job not found")
-    return {"success": True, **job}
+        raise HTTPException(status_code=404, detail="Job not found or expired")
+    return {
+        "success": True,
+        **{k: v for k, v in job.items() if not str(k).startswith("_")},
+    }
 
 
 @router.post("/run")
@@ -150,29 +190,41 @@ async def pipeline_run(
                 request.pipeline_key,
             )
         job_id = str(uuid.uuid4())
-        _background_jobs[job_id] = {"status": "running", "pipeline_key": request.pipeline_key}
+        _set_background_job(
+            job_id,
+            {"status": "running", "pipeline_key": request.pipeline_key},
+        )
 
         async def _run_bg():
             try:
                 state = await _execute_pipeline(request)
-                _background_jobs[job_id] = {
-                    "status": "completed",
-                    "pipeline_key": request.pipeline_key,
-                    "result": serialize_pipeline_state(state),
-                }
+                _set_background_job(
+                    job_id,
+                    {
+                        "status": "completed",
+                        "pipeline_key": request.pipeline_key,
+                        "result": serialize_pipeline_state(state),
+                    },
+                )
             except HTTPException as e:
-                _background_jobs[job_id] = {
-                    "status": "failed",
-                    "pipeline_key": request.pipeline_key,
-                    "error": e.detail,
-                }
+                _set_background_job(
+                    job_id,
+                    {
+                        "status": "failed",
+                        "pipeline_key": request.pipeline_key,
+                        "error": e.detail,
+                    },
+                )
             except Exception as e:
                 logger.error("Background pipeline failed: {}", e)
-                _background_jobs[job_id] = {
-                    "status": "failed",
-                    "pipeline_key": request.pipeline_key,
-                    "error": str(e),
-                }
+                _set_background_job(
+                    job_id,
+                    {
+                        "status": "failed",
+                        "pipeline_key": request.pipeline_key,
+                        "error": str(e),
+                    },
+                )
 
         background_tasks.add_task(_run_bg)
 

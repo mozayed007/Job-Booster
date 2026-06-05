@@ -66,6 +66,8 @@ class StartupScannerAgent(BaseAgent):
         self.state_file = state_file or Path("scanner_state.json")
         self.scraper = get_scraper()
         self.state = self._load_state()
+        self._merged_startups_cache: list[Startup] | None = None
+        self._city_map_cache: dict[str, str] | None = None
 
         init_ai_stack()
 
@@ -98,6 +100,11 @@ class StartupScannerAgent(BaseAgent):
     def _save_state(self) -> None:
         """Save scanner state to file."""
         self.state_file.write_text(self.state.model_dump_json(indent=2))
+
+    def _invalidate_startup_caches(self) -> None:
+        """Clear cached startup lists after imports or batch scans."""
+        self._merged_startups_cache = None
+        self._city_map_cache = None
 
     async def extract_jobs(self, startup_name: str, career_content: str) -> list[JobOpening]:
         """Extract jobs from career page content using Pydantic AI."""
@@ -268,6 +275,7 @@ class StartupScannerAgent(BaseAgent):
             self._save_state()
 
             await self._persist_jobs(all_jobs)
+            self._invalidate_startup_caches()
 
             if logfire:
                 logfire.info(
@@ -339,10 +347,7 @@ class StartupScannerAgent(BaseAgent):
         """Get top roles by relevance score, optionally filtered by startup city."""
         roles = self.state.promising_roles
         if city and city.strip().lower() != "all":
-            city_map = {
-                s.name.strip().lower(): s.city.strip().lower()
-                for s in self._merged_startups_with_website()
-            }
+            city_map = self._startup_city_map()
             needle = city.strip().lower()
             roles = [
                 r
@@ -351,8 +356,20 @@ class StartupScannerAgent(BaseAgent):
             ]
         return roles[:limit]
 
+    def _startup_city_map(self) -> dict[str, str]:
+        """Cached name → city map for display filtering."""
+        if getattr(self, "_city_map_cache", None) is None:
+            self._city_map_cache = {
+                s.name.strip().lower(): s.city.strip().lower()
+                for s in self._merged_startups_with_website()
+            }
+        return self._city_map_cache
+
     def _merged_startups_with_website(self) -> list[Startup]:
         """Same merge as process_batch: BigSet imports + startups.md."""
+        cached = getattr(self, "_merged_startups_cache", None)
+        if cached is not None:
+            return cached
         file_startups = parse_startups_file()
         db = get_db_session()
         try:
@@ -365,6 +382,7 @@ class StartupScannerAgent(BaseAgent):
             if s.name not in seen and s.website:
                 seen.add(s.name)
                 merged.append(s)
+        self._merged_startups_cache = merged
         return merged
 
     def get_progress(self) -> dict:
