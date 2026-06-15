@@ -96,7 +96,7 @@ class BaseAgent(ABC):
                 output_type=self._resolve_output_type(),
                 system_prompt=self.system_prompt,
                 retries=self.config.model_retries,
-                tools=tools or None,
+                tools=tools or [],
             )
         except Exception as e:
             logger.error(f"Failed to build agent '{self.config.name}': {e}")

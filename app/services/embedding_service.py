@@ -42,7 +42,7 @@ class EmbeddingService:
         if env_model:
             return env_model
         try:
-            return get_registry().get_model_string()
+            return get_registry().get_litellm_model_string()
         except Exception:
             return "openai:text-embedding-3-small"
 

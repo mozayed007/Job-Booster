@@ -31,6 +31,25 @@ class Provider(str, Enum):
     VLLM = "vllm"
 
 
+# Pydantic AI uses ``provider:model`` while LiteLLM uses ``provider/model``.
+# Map the few providers whose LiteLLM slug differs from the Pydantic AI name.
+_PROVIDER_TO_LITELLM: dict[str, str] = {
+    Provider.GOOGLE: "gemini",
+}
+
+
+def _to_litellm(model_string: str) -> str:
+    """Convert a Pydantic AI model string to a LiteLLM model string.
+
+    If the input already looks like a LiteLLM string (contains ``/`` or has no
+    ``:``), it is returned unchanged.
+    """
+    if "/" in model_string or ":" not in model_string:
+        return model_string
+    provider, _, model = model_string.partition(":")
+    return f"{_PROVIDER_TO_LITELLM.get(provider, provider)}/{model}"
+
+
 @dataclass
 class ProviderInfo:
     name: Provider
@@ -72,7 +91,7 @@ def _detect_env_providers() -> list[ProviderInfo]:
         ProviderInfo(
             name=Provider.GOOGLE,
             available=has_google,
-            model_string="google:gemini-2.0-flash",
+            model_string="google:gemini-3.1-flash-lite",
             detected_via="GEMINI_API_KEY" if has_google else "",
         )
     )
@@ -270,11 +289,14 @@ class ModelRegistry:
             if self.settings.litellm_cache:
                 litellm.cache = litellm.Cache()
 
-            try:
-                litellm.success_callback = ["logfire"]
-                litellm.failure_callback = ["logfire"]
-            except Exception:
-                pass
+            # Only enable the Logfire callback when a token is actually
+            # available; otherwise LiteLLM raises during every completion.
+            if os.getenv("LOGFIRE_TOKEN"):
+                try:
+                    litellm.success_callback = ["logfire"]
+                    litellm.failure_callback = ["logfire"]
+                except Exception:
+                    pass
         except ImportError:
             pass
 
@@ -361,7 +383,7 @@ class ModelRegistry:
         return ModelChain(
             primary_model_string=primary_info.model_string
             if primary_info
-            else "google:gemini-2.0-flash",
+            else "google:gemini-3.1-flash-lite",
             fallback_model_strings=fallbacks,
             primary_provider=primary,
         )
@@ -437,6 +459,10 @@ class ModelRegistry:
     def get_model_string(self) -> str:
         """Get the primary model string for Pydantic AI."""
         return self.resolve_chain().primary_model_string
+
+    def get_litellm_model_string(self) -> str:
+        """Get the primary model string formatted for LiteLLM / LangChain."""
+        return _to_litellm(self.get_model_string())
 
     def get_fallback_model_strings(self) -> list[str]:
         return self.resolve_chain().fallback_model_strings
@@ -566,6 +592,11 @@ def get_registry() -> ModelRegistry:
 def get_model_string() -> str:
     """Get primary model string. Replaces old get_pydantic_ai_model()."""
     return get_registry().get_model_string()
+
+
+def get_litellm_model_string() -> str:
+    """Get primary model string formatted for LiteLLM / LangChain."""
+    return get_registry().get_litellm_model_string()
 
 
 def get_model():

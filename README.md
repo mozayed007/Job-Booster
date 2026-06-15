@@ -6,7 +6,7 @@
 [![Pydantic AI](https://img.shields.io/badge/Pydantic%20AI-0.2%2B-purple)](https://ai.pydantic.dev/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![CI](https://github.com/mozayed007/Job-Booster/actions/workflows/ci.yml/badge.svg)](https://github.com/mozayed007/Job-Booster/actions/workflows/ci.yml)
-[![Tests](https://img.shields.io/badge/tests-116%2F10%20files-brightgreen)](tests/)
+[![Tests](https://img.shields.io/badge/tests-192%2F12%20files-brightgreen)](tests/)
 [![Docker](https://img.shields.io/badge/docker-ready-blue)](Dockerfile)
 
 **Stop copy-pasting resumes.** Job Booster is an AI platform that parses, tailors, reviews, and tracks your entire job application pipeline — powered by 8 specialized AI agents that work together.
@@ -209,6 +209,30 @@ FastAPI (8000) ──▶ API Routes (10 routers)
 
 ---
 
+## LangChain + LangGraph Comparison Layer
+
+`app/langchain_layer/` is a parallel AI-agent implementation that mirrors the
+Pydantic AI layer so you can compare the two stacks side-by-side:
+
+| Pydantic AI | LangChain + LangGraph |
+|-------------|----------------------|
+| `BaseAgent` + YAML config | `LangChainAgent` base class |
+| `app.pipelines.engine.PipelineEngine` | `app.langchain_layer.graph.LangGraphPipeline` |
+| `PipelineState` dataclass | `LCGraphState` dataclass |
+| `pydantic-ai.Agent` with `output_type` | `ChatLiteLLM` with `with_structured_output()` |
+| Async sequential agent calls | Compiled `StateGraph` with async nodes |
+
+The LangChain layer reuses the same LiteLLM model registry, the same pipeline
+YAML definitions, and the same Pydantic output models, so comparisons focus on
+orchestration and developer experience rather than model access.
+
+```bash
+# Run LangChain layer tests only
+pytest tests/test_langchain_layer.py -v
+```
+
+---
+
 ## Tech Stack
 
 | Layer | Technology |
@@ -216,6 +240,7 @@ FastAPI (8000) ──▶ API Routes (10 routers)
 | Backend | FastAPI 0.115+, Python 3.10+ |
 | Frontend | Gradio 5.0+ (9 tabs) |
 | AI Agents | Pydantic AI 0.2+ + pydantic-graph |
+| AI Agents (alt) | LangChain 0.3+ + LangGraph 0.3+ + `langchain-litellm` |
 | Agent Config | YAML (`agents.yaml` + `pipelines.yaml`) + Portable Profiles (`profiles/`) |
 | LLM Router | LiteLLM (100+ providers, auto-fallback) |
 | Document Parsing | LiteParse (LlamaIndex) + GLM-OCR |
@@ -270,7 +295,7 @@ ruff format --check .
 mypy app/
 ```
 
-116 tests across 10 files. CI runs on Python 3.10, 3.11, 3.12.
+192 tests across 12 files. CI runs on Python 3.10, 3.11, 3.12.
 
 ---
 
@@ -350,16 +375,27 @@ Job_Booster/
 ├── app/
 │   ├── main.py                 # FastAPI entry point (API v0.2.0)
 │   ├── frontend.py             # Gradio UI (9 tabs)
-│   ├── agents/                 # 8 config-driven AI agents
+│   ├── agents/                 # 8 config-driven AI agents (Pydantic AI)
 │   │   ├── agents.yaml         # Agent definitions (prompts, skills, types)
 │   │   ├── base_agent.py       # BaseAgent with YAML loading
 │   │   ├── profile_loader.py   # Portable profile loader
 │   │   ├── web_tools.py        # Web search/fetch Pydantic AI tools
 │   │   └── *.md                # Skill files per agent
+│   ├── langchain_layer/        # Parallel LangChain + LangGraph AI layer
+│   │   ├── agents.py           # Mirrored agents using ChatLiteLLM
+│   │   ├── factory.py          # ChatLiteLLM factory from ModelRegistry
+│   │   ├── graph.py            # LangGraph pipeline engine
+│   │   ├── prompts.py          # Prompt builders
+│   │   └── state.py            # LCGraphState dataclass
 │   ├── api/                    # 10 FastAPI routers
 │   ├── core/                   # Config, ModelRegistry, LLM setup
 │   ├── middleware/             # JWT auth middleware
-│   ├── pipelines/              # Pipeline engine + state + pipeline definitions
+│   ├── pipelines/              # Pipeline engines (sequential + pydantic-graph + LangGraph) + state
+│   │   ├── engine.py           # Sequential PipelineEngine
+│   │   ├── graph_engine.py     # pydantic-graph backend
+│   │   ├── langchain_layer/    # LangGraph backend (see above)
+│   │   ├── state.py            # Shared PipelineState
+│   │   └── pipelines.yaml      # Pipeline definitions
 │   ├── services/               # Business logic (15 modules)
 │   ├── models/                 # Pydantic + SQLAlchemy models
 │   ├── prompts/                # LLM prompt templates (Markdown)

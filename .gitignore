@@ -4,6 +4,7 @@
 !.env.example
 *.env
 .bigset_import_state.json
+secrets/
 
 # Python
 __pycache__/
@@ -77,6 +78,11 @@ scanner_state.json
 # mcps/     inbound MCP tool schemas (GitHub, Notion, Supabase, …) for agents on this repo
 # profiles/ portable agent profiles + outbound MCP server (profiles/runtimes/mcp_server.py)
 
+# User-specific resume source files (never commit real resumes)
+data/resumes/sources/*
+!data/resumes/sources/.gitkeep
+!data/resumes/sources/sample_resume.md
+
 # Generated output resumes (user-specific, do not commit)
 data/resumes/output/*
 !data/resumes/output/.gitkeep
@@ -84,6 +90,12 @@ data/resumes/output/*
 # Vector DB data (runtime-generated)
 data/qdrant/
 data/chromadb/
+
+# Application runtime artifacts
+job_booster.db
+*.session.sql
+scanner_state.json
+outputs/
 
 # Node
 node_modules/
