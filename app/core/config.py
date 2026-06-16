@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     DATABASE_URL: str = "sqlite:///./job_booster.db"
 
     GOOGLE_GEMINI_API_KEY: str | None = None
-    GEMINI_MODEL: str = "gemini-3.1-flash-lite"
+    GEMINI_MODEL: str = "google:gemini-3.1-flash-lite"
 
     API_URL: str = "http://localhost:8000"
 

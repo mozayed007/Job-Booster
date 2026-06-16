@@ -29,8 +29,8 @@ from app.services.bigset_import_service import (
     mark_startup_scanned,
     should_skip_scrape,
 )
-from app.services.job_fit_service import jobs_for_company
 from app.services.db_service import get_db_session
+from app.services.job_fit_service import jobs_for_company
 from app.services.scraper_service import get_scraper
 from app.services.startup_parser import parse_startups_file
 from app.services.user_profile_service import load_user_profile

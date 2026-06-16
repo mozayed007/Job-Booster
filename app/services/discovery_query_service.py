@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.models.startup_model import UserProfile
 from app.services.db_service import DatabaseService, get_db_session
-from app.services.job_fit_service import rank_imported_jobs, score_job_against_profile
+from app.services.job_fit_service import rank_imported_jobs
 from app.services.search_service import SearchService
 from app.services.user_profile_service import load_user_profile
 from app.services.vector_store import get_vector_store

@@ -24,7 +24,8 @@ def _join_list(items: list) -> str:
 def build_auth_tab(api_token) -> None:
     gr.Markdown(
         "### Account\n"
-        "Sign in for protected routes. Edit your job-search profile (saved to `data/user_profile.yaml`)."
+        "Sign in for protected routes. Edit your job-search profile "
+        "(saved to `data/user_profile.yaml`)."
     )
 
     with gr.Tabs():
@@ -74,7 +75,10 @@ def build_auth_tab(api_token) -> None:
             return {"Error": "Email and password required"}, _token_md(""), ""
         try:
             result = run_async(auth_register(email, password, name or ""))
-            token = result.get("token", "") if isinstance(result, dict) and "Error" not in result else ""
+            if isinstance(result, dict) and "Error" not in result:
+                token = result.get("token", "")
+            else:
+                token = ""
             return result, _token_md(token), token
         except Exception as e:
             return {"Error": str(e)}, _token_md(""), ""

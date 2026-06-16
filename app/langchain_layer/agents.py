@@ -36,14 +36,18 @@ class LangChainAgent:
         model: ChatLiteLLM | None = None,
     ) -> None:
         self.system_prompt = system_prompt
-        self.output_type = output_type or self.__class__.output_type
+        self._output_type = output_type or self.__class__.output_type
         self.model = model or build_llm()
-        self._chain = self.model.with_structured_output(self.output_type)
+        self._chain = self.model.with_structured_output(self._output_type)
 
     @property
     def is_ready(self) -> bool:
         """Return True if the model chain is configured."""
         return self._chain is not None
+
+    async def execute(self, state: LCGraphState) -> LCGraphState:
+        """Pipeline node: subclasses must override to process state."""
+        raise NotImplementedError("Subclasses must implement execute()")
 
     async def run(self, prompt: str) -> BaseModel:
         """Execute the chain and return a validated Pydantic output model.
@@ -56,7 +60,10 @@ class LangChainAgent:
                 SystemMessage(content=self.system_prompt),
                 HumanMessage(content=prompt),
             ]
-            return await self._chain.ainvoke(messages)
+            result = await self._chain.ainvoke(messages)
+            if isinstance(result, BaseModel):
+                return result
+            return self._output_type.model_validate(result)
         except Exception as exc:
             logger.error(f"{self.__class__.__name__} invocation failed: {exc}")
             return self._fallback_output(str(exc))
@@ -64,10 +71,10 @@ class LangChainAgent:
     def _fallback_output(self, error_message: str) -> BaseModel:
         """Create a minimal valid output instance after an error."""
         try:
-            return self.output_type()
+            return self._output_type()
         except ValidationError:
             # Required fields exist; construct without validation and attach error.
-            instance = self.output_type.model_construct()
+            instance = self._output_type.model_construct()
             if hasattr(instance, "errors"):
                 instance.errors = [error_message]  # type: ignore[attr-defined]
             return instance

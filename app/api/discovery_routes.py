@@ -18,18 +18,18 @@ from app.services.bigset_remote_service import (
     _goal_cache_path,
     maybe_request_dataset_build,
 )
-from app.services.discovery_query_service import search_imported_jobs
-from app.services.job_fit_service import rank_imported_jobs
-from app.services.user_profile_service import load_user_profile
 from app.services.db_service import (
     DatabaseService,
     get_db_session,
 )
+from app.services.discovery_query_service import search_imported_jobs
 from app.services.job_board_scraper import (
     get_available_sources,
     search_all_sources,
 )
+from app.services.job_fit_service import rank_imported_jobs
 from app.services.search_service import SearchService
+from app.services.user_profile_service import load_user_profile
 from app.services.vector_store import get_vector_store
 
 router = APIRouter(prefix="/discovery", tags=["Job Discovery"])

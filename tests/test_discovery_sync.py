@@ -2,7 +2,6 @@
 
 import pytest
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
 
 from app.agents.base_agent import AgentConfig
 from app.agents.discovery_sync import DiscoverySyncAgent

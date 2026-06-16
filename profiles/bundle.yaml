@@ -39,7 +39,7 @@ agents:
         preferred_models:
         - gpt-4o
         - claude-sonnet-4-5
-        - gemini-2.0-flash
+        - google:gemini-3.1-flash-lite
         context_window: 8000
     instructions: "# Cover Letter Generator\n\nWrites a tailored, human-sounding cover letter grounded in the user's actual\n\
       resume and the specific job description. No generic filler. No fabrication.\n\n---\n\n## Inputs Required\n\n| Input\
@@ -152,7 +152,7 @@ agents:
         preferred_models:
         - gpt-4o
         - claude-sonnet-4-5
-        - gemini-2.0-flash
+        - google:gemini-3.1-flash-lite
         context_window: 16000
     instructions: "# CV Extractor & Job-Tailored Resume Generator\n\nReads a full CV in any format and generates a clean,\
       \ tailored one-page\nresume that matches a specific job description — using only real content\nfrom the CV. Zero hallucination.\
@@ -264,7 +264,7 @@ agents:
         preferred_models:
         - gpt-4o
         - claude-sonnet-4-5
-        - gemini-2.0-flash
+        - google:gemini-3.1-flash-lite
         context_window: 8000
     instructions: '# Interview Coach
 
@@ -493,7 +493,7 @@ agents:
         preferred_models:
         - gpt-4o
         - claude-sonnet-4-5
-        - gemini-2.0-flash
+        - google:gemini-3.1-flash-lite
         context_window: 16000
     instructions: "# Job Finder Agent\n\nFinds current, high-quality job listings from credible sources and presents\nthem\
       \ ranked by fit to the candidate's profile. Can optionally auto-apply\nusing browser automation.\n\n---\n\n## Inputs\n\
@@ -613,7 +613,7 @@ agents:
         preferred_models:
         - gpt-4o
         - claude-sonnet-4-5
-        - gemini-2.0-flash
+        - google:gemini-3.1-flash-lite
         context_window: 8000
     instructions: '# Outreach Agent
 
@@ -797,7 +797,7 @@ agents:
         preferred_models:
         - gpt-4o
         - claude-sonnet-4-5
-        - gemini-2.0-flash
+        - google:gemini-3.1-flash-lite
         context_window: 8000
     instructions: "# Resume Reviewer Agent\n\nTransforms resume bullet points into high-impact, achievement-oriented\nstatements\
       \ using Google's famous XYZ Formula and related best practices.\n\n---\n\n## The Google XYZ Formula\n\n> **\"Accomplished\
@@ -893,7 +893,7 @@ agents:
         preferred_models:
         - gpt-4o
         - claude-sonnet-4-5
-        - gemini-2.0-flash
+        - google:gemini-3.1-flash-lite
         context_window: 8000
     instructions: '# Resume Tailor
 
@@ -972,7 +972,7 @@ agents:
         preferred_models:
         - gpt-4o
         - claude-sonnet-4-5
-        - gemini-2.0-flash
+        - google:gemini-3.1-flash-lite
         context_window: 16000
     instructions: '# Startup Scanner
 

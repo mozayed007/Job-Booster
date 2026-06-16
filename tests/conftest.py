@@ -2,10 +2,10 @@
 
 import pytest
 import sqlalchemy.orm as orm
+from sqlalchemy import create_engine
 from sqlalchemy.pool import StaticPool
 
 from app.models.db_models import Base, create_tables
-from sqlalchemy import create_engine
 
 
 @pytest.fixture(autouse=True)

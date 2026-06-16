@@ -8,10 +8,10 @@ stack" counterpart to the plain async engine and the LangGraph layer.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import ClassVar
+from typing import Any, ClassVar
 
 from loguru import logger
-from pydantic_graph import BaseNode, End, GraphBuilder, GraphRunContext, StepContext
+from pydantic_graph import BaseNode, End, GraphBuilder, GraphRunContext
 
 from app.agents.base_agent import BaseAgent, load_agents
 from app.pipelines.engine import get_pipeline_config
@@ -81,14 +81,14 @@ class AgentNode(BaseNode[PipelineState, None, PipelineState]):
 
 def build_pydantic_graph(
     pipeline_key: str,
-) -> GraphBuilder[PipelineState, None, PipelineState].Graph:
+) -> tuple[Any, AgentNode]:
     """Build a pydantic-graph ``Graph`` from a pipeline config.
 
     Args:
         pipeline_key: Key from ``pipelines.yaml``.
 
     Returns:
-        A compiled pydantic-graph Graph ready to ``run``.
+        A tuple of (compiled Graph, start node instance) ready to ``run``.
     """
     config = get_pipeline_config(pipeline_key)
     if config is None:
@@ -111,24 +111,16 @@ def build_pydantic_graph(
         return node_class()
 
     run.__annotations__["return"] = node_class | End[PipelineState]
-    node_class.run = run
+    node_class.run = run  # type: ignore[attr-defined]
 
     g = GraphBuilder(
         state_type=PipelineState,
-        input_type=PipelineState,
         output_type=PipelineState,
     )
 
     g.add(g.node(node_class))
-
-    @g.step
-    async def start(
-        ctx: StepContext[PipelineState, None, PipelineState],
-    ) -> node_class:
-        return node_class()
-
-    g.add(g.edge_from(g.start_node).to(start))
-    return g.build()
+    g.add(g.edge_from(g.start_node).to(node_class))
+    return g.build(), node_class()
 
 
 class PydanticGraphPipelineEngine:
@@ -176,11 +168,11 @@ class PydanticGraphPipelineEngine:
         if not config.steps:
             return initial_state
 
-        graph = build_pydantic_graph(pipeline_key)
+        graph, start_node = build_pydantic_graph(pipeline_key)
 
         try:
             result = await graph.run(
-                inputs=initial_state,
+                inputs=start_node,
                 state=initial_state,
             )
             if isinstance(result, PipelineState):

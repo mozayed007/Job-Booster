@@ -6,6 +6,7 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
+from app.core.config import settings
 from app.models.db_models import Base, JobPostingDB, StartupDB
 from app.services.bigset_import_service import (
     BIGSET_CATEGORY,
@@ -17,7 +18,6 @@ from app.services.bigset_import_service import (
     resolve_mapping_id,
     should_skip_scrape,
 )
-from app.core.config import settings
 
 
 @pytest.fixture

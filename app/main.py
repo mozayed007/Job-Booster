@@ -12,11 +12,11 @@ from app.api.auth_routes import router as auth_router
 from app.api.dashboard_routes import router as dashboard_router
 from app.api.discovery_routes import router as discovery_router
 from app.api.pipeline_routes import router as pipeline_router
-from app.api.settings_routes import router as settings_router
 from app.api.recommendation_routes import router as recommendation_router
 from app.api.resume_routes import router as resume_router
 from app.api.scanner_routes import router as scanner_router
 from app.api.search_routes import router as search_router
+from app.api.settings_routes import router as settings_router
 from app.api.tracking_routes import router as tracking_router
 from app.core.config import settings
 from app.core.model_registry import get_registry, init_ai_stack

@@ -81,7 +81,10 @@ def build_scanner_tab() -> tuple:
             progress = run_async(scanner_progress())
             rows = _jobs_rows(run_async(scanner_top_jobs(50, city=city)))
             cities_data = run_async(scanner_cities())
-            city_choices = ["All"] + list(cities_data.keys()) if isinstance(cities_data, dict) else ["All"]
+            if isinstance(cities_data, dict):
+                city_choices = ["All"] + list(cities_data.keys())
+            else:
+                city_choices = ["All"]
             return (
                 _progress_markdown(progress),
                 progress,
@@ -89,7 +92,9 @@ def build_scanner_tab() -> tuple:
                 gr.Dropdown(choices=city_choices, value="All"),
             )
         except Exception as e:
-            return f"**Error:** {e}", {}, [[str(e), "", "", ""]], gr.Dropdown(choices=["All"], value="All")
+            err_row = [[str(e), "", "", ""]]
+            dd = gr.Dropdown(choices=["All"], value="All")
+            return f"**Error:** {e}", {}, err_row, dd
 
     def scan_batch(size):
         try:
@@ -98,7 +103,10 @@ def build_scanner_tab() -> tuple:
             if not progress and "total_startups" in result:
                 progress = result
             jobs = result.get("jobs", [])
-            rows = _jobs_rows(jobs) if jobs else _jobs_rows(run_async(scanner_top_jobs(50, city="All")))
+            if jobs:
+                rows = _jobs_rows(jobs)
+            else:
+                rows = _jobs_rows(run_async(scanner_top_jobs(50, city="All")))
             return _progress_markdown(progress), progress, rows
         except Exception as e:
             return f"**Error:** {e}", {}, [[str(e), "", "", ""]]

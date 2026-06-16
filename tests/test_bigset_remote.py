@@ -1,7 +1,7 @@
 """Tests for BigSet remote dataset planning."""
 
 from app.models.startup_model import UserProfile
-from app.services.bigset_remote_service import profile_to_dataset_goal, persist_dataset_goal
+from app.services.bigset_remote_service import persist_dataset_goal, profile_to_dataset_goal
 
 
 class TestBigSetRemote:

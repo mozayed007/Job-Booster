@@ -7,7 +7,16 @@ import uuid
 from dataclasses import asdict, is_dataclass
 from typing import Any
 
-from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Query, UploadFile
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    File,
+    Form,
+    HTTPException,
+    Query,
+    UploadFile,
+)
 from loguru import logger
 from pydantic import BaseModel, Field
 

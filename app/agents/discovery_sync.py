@@ -2,12 +2,10 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from loguru import logger
 from pydantic import BaseModel, Field
 
-from app.agents.base_agent import AgentConfig, BaseAgent
+from app.agents.base_agent import BaseAgent
 from app.core.config import settings
 from app.pipelines.state import PipelineState
 from app.services.bigset_import_service import import_changed_files_in_dir

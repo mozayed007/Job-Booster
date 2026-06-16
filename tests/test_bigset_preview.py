@@ -2,8 +2,6 @@
 
 from pathlib import Path
 
-import pytest
-
 from app.services.bigset_import_service import preview_import
 
 FIXTURE = Path(__file__).parent / "fixtures" / "bigset_yc_sample.csv"

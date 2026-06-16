@@ -102,7 +102,7 @@ def _make_node(agent_key: str, agent: LangChainAgent) -> PipelineStepFn:
 def build_pipeline_graph(
     pipeline_key: str,
     model: Any | None = None,
-) -> StateGraph:
+) -> Any:
     """Build a compiled LangGraph for a pipeline defined in ``pipelines.yaml``.
 
     Args:
@@ -127,7 +127,7 @@ def build_pipeline_graph(
             continue
 
         node_fn = _make_node(step.agent_key, agent)
-        workflow.add_node(step.agent_key, node_fn)
+        workflow.add_node(step.agent_key, node_fn)  # type: ignore[call-overload]
 
         if previous_node is None:
             workflow.add_edge(START, step.agent_key)
