@@ -6,7 +6,7 @@
 [![Pydantic AI](https://img.shields.io/badge/Pydantic%20AI-0.2%2B-purple)](https://ai.pydantic.dev/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![CI](https://github.com/mozayed007/Job-Booster/actions/workflows/ci.yml/badge.svg)](https://github.com/mozayed007/Job-Booster/actions/workflows/ci.yml)
-[![Tests](https://img.shields.io/badge/tests-192%2F12%20files-brightgreen)](tests/)
+[![Tests](https://img.shields.io/badge/tests-200%2F13%20files-brightgreen)](tests/)
 [![Docker](https://img.shields.io/badge/docker-ready-blue)](Dockerfile)
 
 **Stop copy-pasting resumes.** Job Booster is an AI platform that parses, tailors, reviews, and tracks your entire job application pipeline — powered by 8 specialized AI agents that work together.
@@ -281,11 +281,14 @@ The Dockerfile uses Python 3.12 slim, installs Node.js 18 for LiteParse, and inc
 ## Testing
 
 ```bash
-# All tests
+# All unit tests (no API key needed)
 pytest tests/ -v
 
 # Specific file
 pytest tests/test_api.py -v
+
+# Integration tests (requires GEMINI_API_KEY in .env)
+pytest -m integration -v
 
 # Lint
 ruff check .
@@ -295,7 +298,26 @@ ruff format --check .
 mypy app/
 ```
 
-192 tests across 12 files. CI runs on Python 3.10, 3.11, 3.12.
+200 tests across 13 files. CI runs on Python 3.10, 3.11, 3.12.
+
+### Integration Tests (requires API key)
+
+Verify your LLM API key works end-to-end:
+
+```bash
+# Auto-detects GEMINI_API_KEY, runs real API calls
+pytest -m integration -v
+```
+
+These tests call the real Gemini API to confirm the full stack works:
+
+- Model registry detects your API key
+- Pydantic AI agents produce structured output
+- LangChain / LangGraph layer responds
+- Pipelines execute end-to-end
+
+**Cost:** ~6 API calls (Gemini 3.1 Flash Lite, free-tier eligible).
+Tests are **skipped automatically** if no API key is set — no configuration needed for CI.
 
 ---
 
@@ -411,7 +433,7 @@ Job_Booster/
 │   └── tools/
 ├── data/                       # Sample resumes, jobs, startups
 ├── docs/                       # Vision, Architecture, Implementation
-├── tests/                      # 192 tests, 12 files
+├── tests/                      # 200 tests, 13 files
 ├── scripts/
 │   ├── run_app.py              # Launch script
 │   └── healthcheck.sh          # Docker health check
