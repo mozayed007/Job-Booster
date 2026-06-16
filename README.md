@@ -28,18 +28,18 @@ Job Booster compresses that cycle to under a minute with a **config-driven agent
 8 agents, each with a dedicated skill file and system prompt, orchestrated through typed pipelines:
 
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│                    Full Application Pipeline                         │
-│                                                                     │
-│  ┌──────────┐   ┌──────────────┐   ┌──────────────┐   ┌──────────┐ │
-│  │    CV    │──▶│   Resume     │──▶│   Cover      │──▶│   Job    │ │
-│  │ Extractor│   │   Reviewer   │   │   Letter     │   │  Finder  │ │
-│  └──────────┘   └──────────────┘   └──────────────┘   └──────────┘ │
-│       │               │                  │                  │       │
-│       ▼               ▼                  ▼                  ▼       │
-│  Structured      Per-bullet         4-paragraph        Scored       │
-│  resume data     health score       tailored letter    listings     │
-└─────────────────────────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────────────────────┐
+│                    Full Application Pipeline                          │
+│                                                                       │
+│  ┌──────────┐   ┌──────────────┐   ┌──────────────┐   ┌──────────┐    │
+│  │    CV    │──▶│   Resume     │──▶│   Cover      │──▶│   Job  │    │
+│  │ Extractor│   │   Reviewer   │   │   Letter     │   │  Finder  │    │
+│  └──────────┘   └──────────────┘   └──────────────┘   └──────────┘    │
+│       │               │                  │                  │         │
+│       ▼               ▼                  ▼                  ▼         │
+│  Structured      Per-bullet         4-paragraph        Scored         │
+│  resume data     health score       tailored letter    listings       │
+└───────────────────────────────────────────────────────────────────────┘
 ```
 
 | Agent | What It Does | Output |
