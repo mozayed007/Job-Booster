@@ -6,7 +6,7 @@
     "properties": {
       "after": {
         "type": "string",
-        "description": "Cursor for pagination. Use the endCursor from the previous page's PageInfo for GraphQL APIs."
+        "description": "Cursor for pagination. Use the cursor from the previous response."
       },
       "direction": {
         "type": "string",

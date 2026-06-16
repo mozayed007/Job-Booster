@@ -32,6 +32,8 @@ from typing import Any
 import httpx
 import yaml
 
+from profiles.runtimes.security import ProfileNotAllowedError, validate_profile_name
+
 PROFILES_DIR = Path(__file__).parent.parent
 AGENTS_DIR = PROFILES_DIR / "agents"
 PROVIDERS_FILE = PROFILES_DIR / "providers.yaml"
@@ -201,6 +203,13 @@ async def run_agent(
     Returns:
         The agent's response text
     """
+    # Validate profile name against the declared allowlist and block
+    # path traversal before touching the filesystem.
+    try:
+        validate_profile_name(profile_name)
+    except ProfileNotAllowedError as e:
+        raise ValueError(str(e)) from e
+
     # Load profile
     profile_path = AGENTS_DIR / f"{profile_name}.yaml"
     if not profile_path.exists():

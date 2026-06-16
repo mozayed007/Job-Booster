@@ -26,6 +26,14 @@ class Settings(BaseSettings):
 
     CORS_ORIGINS: str = "*"
 
+    # Auth — a fixed JWT signing secret must be supplied in production.
+    # When unset and DEBUG=False the app refuses to start (see
+    # ``app.services.auth_service``). A random per-process secret is only
+    # permitted for local development.
+    JWT_SECRET_KEY: str | None = None
+    JWT_ALGORITHM: str = "HS256"
+    JWT_EXPIRY_HOURS: int = 24
+
     # Paths
     RESUME_SOURCES_DIR: str = "data/resumes/sources"
     RESUME_OUTPUT_DIR: str = "data/resumes/output"

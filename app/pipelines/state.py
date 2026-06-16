@@ -7,11 +7,11 @@ from typing import Any
 @dataclass
 class PipelineState:
     """State passed through pipeline execution.
-    
+
     Inputs are set at pipeline start. Outputs are accumulated in artifacts
     as each agent executes.
     """
-    
+
     # Inputs (set at construction)
     pipeline_name: str = ""
     resume_text: str = ""
@@ -23,10 +23,10 @@ class PipelineState:
     artifacts: dict[str, Any] = field(default_factory=dict)
     errors: list[str] = field(default_factory=list)
     current_step: int = 0
-    
+
     def get_resume_text(self) -> str:
         """Get the best available resume text from artifacts or inputs.
-        
+
         Priority order:
         1. Resume reviewer output (most refined)
         2. CV extractor output (tailored)
@@ -41,7 +41,8 @@ class PipelineState:
         ]:
             artifact = self.artifacts.get(key)
             if artifact and getattr(artifact, attr, None):
-                return getattr(artifact, attr)
-        
+                value = getattr(artifact, attr)
+                return str(value)
+
         # Fall back to raw input
         return self.cv_text or self.resume_text

@@ -75,10 +75,10 @@ class ApplicationTracker:
                 query = query.filter(ApplicationDB.user_id == user_id)
 
             total = query.count()
-            status_counts = db.query(ApplicationDB.status, func.count(ApplicationDB.id))
+            status_query = db.query(ApplicationDB.status, func.count(ApplicationDB.id))
             if user_id is not None:
-                status_counts = status_counts.filter(ApplicationDB.user_id == user_id)
-            status_counts = status_counts.group_by(ApplicationDB.status).all()
+                status_query = status_query.filter(ApplicationDB.user_id == user_id)
+            status_counts = status_query.group_by(ApplicationDB.status).all()
 
             by_status = {status: count for status, count in status_counts}
 

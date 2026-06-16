@@ -143,7 +143,7 @@ def get_profile_config(key: str) -> ProfileAgentConfig | None:
     return configs.get(_kebab_to_snake(key))
 
 
-def list_available_agents() -> list[dict[str, str]]:
+def list_available_agents() -> list[dict[str, str | list[str]]]:
     """List all available agents with metadata.
 
     Returns:
@@ -179,4 +179,5 @@ def load_pipelines(profiles_dir: Path | None = None) -> dict[str, Any]:
     with open(pipelines_path, encoding="utf-8") as f:
         data = yaml.safe_load(f)
 
-    return data.get("pipelines", {})
+    pipelines = data.get("pipelines", {})
+    return pipelines if isinstance(pipelines, dict) else {}

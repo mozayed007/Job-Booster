@@ -31,6 +31,7 @@ class EventBus:
 
     _handlers: dict[str, list[EventHandler]] = {}
     _history: list[PipelineEvent] = []
+    _max_history: int = 1000
 
     @classmethod
     def on(cls, event_type: str, handler: EventHandler) -> None:
@@ -54,6 +55,8 @@ class EventBus:
         """
         event = PipelineEvent(event_type=event_type, data=data or {})
         cls._history.append(event)
+        if len(cls._history) > cls._max_history:
+            cls._history = cls._history[-cls._max_history :]
 
         # Call specific handlers
         for handler in cls._handlers.get(event_type, []):

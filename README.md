@@ -6,10 +6,10 @@
 [![Pydantic AI](https://img.shields.io/badge/Pydantic%20AI-0.2%2B-purple)](https://ai.pydantic.dev/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![CI](https://github.com/mozayed007/Job-Booster/actions/workflows/ci.yml/badge.svg)](https://github.com/mozayed007/Job-Booster/actions/workflows/ci.yml)
-[![Tests](https://img.shields.io/badge/tests-207%2F13%20files-brightgreen)](tests/)
+[![Tests](https://img.shields.io/badge/tests-213%2F24%20files-brightgreen)](tests/)
 [![Docker](https://img.shields.io/badge/docker-ready-blue)](Dockerfile)
 
-**Stop copy-pasting resumes.** Job Booster is an AI platform that parses, tailors, reviews, and tracks your entire job application pipeline — powered by 8 specialized AI agents that work together.
+**Stop copy-pasting resumes.** Job Booster is an AI platform that parses, tailors, reviews, and tracks your entire job application pipeline — powered by 9 specialized AI agents that work together.
 
 Feed it a resume and a job description. Get back a tailored resume, a cover letter, interview prep, and a tracked application — in seconds, not hours.
 
@@ -25,7 +25,7 @@ Job Booster compresses that cycle to under a minute with a **config-driven agent
 
 ## The Agent Experience
 
-8 agents, each with a dedicated skill file and system prompt, orchestrated through typed pipelines:
+9 agents, each with a dedicated skill file and system prompt, orchestrated through typed pipelines:
 
 ```
 ┌───────────────────────────────────────────────────────────────────────┐
@@ -45,6 +45,7 @@ Job Booster compresses that cycle to under a minute with a **config-driven agent
 | Agent | What It Does | Output |
 |-------|-------------|--------|
 | **CV Extractor** | Parses your resume, maps skills to the JD, rewrites with XYZ formula | Structured CV data, relevance summary, missing metrics |
+| **Discovery Sync** | Imports BigSet exports and remote dataset planning before discovery agents | Imported/synchronized job corpus ready for ranking |
 | **Resume Reviewer** | Diagnoses every bullet, scores resume health, rewrites weak points | Per-bullet reviews, health score, rewritten resume |
 | **Cover Letter Generator** | Writes a grounded 4-paragraph letter — no buzzwords, no fabrication | Plain text + .docx, key angle mapping |
 | **Job Finder** | Generates targeted search queries, scores listings across 6 criteria | Scored job listings with visa status |
@@ -65,10 +66,11 @@ Job Booster supports a portable agent profile architecture under `profiles/` for
 profiles/
 ├── schema.yaml          # v1.0 profile schema definition
 ├── providers.yaml       # LLM provider definitions + fallback chains
-├── bundle.yaml          # Master bundle with all 8 agent profiles
+├── bundle.yaml          # Master bundle with all 9 agent profiles
 ├── pipelines.yaml       # Portable pipeline definitions
 ├── agents/              # Individual agent YAML profiles
 │   ├── cv-extractor.yaml
+│   ├── discovery-sync.yaml
 │   ├── resume-reviewer.yaml
 │   ├── cover-letter.yaml
 │   ├── job-finder.yaml
@@ -143,7 +145,7 @@ python scripts/run_app.py
 ### Access Points
 
 - **Gradio UI**: http://localhost:8050
-- **API docs**: http://localhost:8000/docs
+- **API docs**: http://localhost:8000/docs (set `DEBUG=true` to enable)
 - **Health check**: http://localhost:8000/health
 - **Model status**: http://localhost:8000/health/models
 
@@ -166,7 +168,7 @@ Optional: enable remote BigSet dataset planning with `BIGSET_REMOTE_ENABLED`, `B
 Gradio UI (8050)
     │
     ▼
-FastAPI (8000) ──▶ API Routes (10 routers)
+FastAPI (8000) ──▶ API Routes (11 routers)
     │
     ├──▶ Pipeline Engine (async loops, typed state)
     │        │
@@ -181,7 +183,7 @@ FastAPI (8000) ──▶ API Routes (10 routers)
     └──▶ TinyFish + Crawl4AI (career page scraping)
 ```
 
-**API Routes (10 routers):**
+**API Routes (11 routers):**
 | Router | Endpoint Prefix | Purpose |
 |--------|----------------|---------|
 | Scanner | `/api/scanner` | Startup career page scanning |
@@ -194,6 +196,7 @@ FastAPI (8000) ──▶ API Routes (10 routers)
 | Pipeline | `/api/pipeline` | Full application pipeline |
 | Discovery | `/api/discovery` | Job board aggregation |
 | Dashboard | `/api/dashboard` | Overview & top matches |
+| Settings | `/api/settings` | User profile and preferences |
 
 **Key modules:**
 - `app/agents/agents.yaml` — all agent definitions (prompts, skills, output types)
@@ -203,7 +206,7 @@ FastAPI (8000) ──▶ API Routes (10 routers)
 - `app/core/llm_config.py` — backward-compatible LLM re-exports
 - `app/pipelines/` — PipelineEngine orchestrating multi-agent workflows
 - `app/pipelines/state.py` — typed PipelineState with artifacts & error tracking
-- `app/services/` — 15 service modules (parsing, auth, search, tracking, export)
+- `app/services/` — 22 service modules (parsing, auth, search, tracking, export, BigSet import/remote)
 - `app/ui/api_client.py` — async HTTP client bridging Gradio to backend APIs
 - `app/middleware/auth_middleware.py` — JWT extraction dependency
 
@@ -238,7 +241,7 @@ pytest tests/test_langchain_layer.py -v
 | Layer | Technology |
 |-------|-----------|
 | Backend | FastAPI 0.115+, Python 3.10+ |
-| Frontend | Gradio 5.0+ (9 tabs) |
+| Frontend | Gradio 5.0+ (10 tabs) |
 | AI Agents | Pydantic AI 0.2+ + pydantic-graph |
 | AI Agents (alt) | LangChain 0.3+ + LangGraph 0.3+ + `langchain-litellm` |
 | Agent Config | YAML (`agents.yaml` + `pipelines.yaml`) + Portable Profiles (`profiles/`) |
@@ -254,7 +257,7 @@ pytest tests/test_langchain_layer.py -v
 | HTTP Client | httpx |
 | Config | pydantic-settings + python-dotenv |
 | YAML Parsing | PyYAML |
-| Async Gradio | nest-asyncio |
+| Async Gradio | thread-isolated asyncio.run |
 | Build | hatchling |
 | Linting | Ruff |
 | Testing | pytest + pytest-asyncio |
@@ -298,7 +301,7 @@ ruff format --check .
 mypy app/
 ```
 
-200 tests across 13 files. CI runs on Python 3.10, 3.11, 3.12.
+213 tests across 24 files. CI runs on Python 3.10, 3.11, 3.12.
 
 ### Integration Tests (requires API key)
 
@@ -396,8 +399,8 @@ See `.env.example` for the full list with inline documentation.
 Job_Booster/
 ├── app/
 │   ├── main.py                 # FastAPI entry point (API v0.2.0)
-│   ├── frontend.py             # Gradio UI (9 tabs)
-│   ├── agents/                 # 8 config-driven AI agents (Pydantic AI)
+│   ├── frontend.py             # Gradio UI (10 tabs)
+│   ├── agents/                 # 9 config-driven AI agents (Pydantic AI)
 │   │   ├── agents.yaml         # Agent definitions (prompts, skills, types)
 │   │   ├── base_agent.py       # BaseAgent with YAML loading
 │   │   ├── profile_loader.py   # Portable profile loader
@@ -409,7 +412,7 @@ Job_Booster/
 │   │   ├── graph.py            # LangGraph pipeline engine
 │   │   ├── prompts.py          # Prompt builders
 │   │   └── state.py            # LCGraphState dataclass
-│   ├── api/                    # 10 FastAPI routers
+│   ├── api/                    # 11 FastAPI routers
 │   ├── core/                   # Config, ModelRegistry, LLM setup
 │   ├── middleware/             # JWT auth middleware
 │   ├── pipelines/              # Pipeline engines (sequential + pydantic-graph + LangGraph) + state
@@ -418,7 +421,7 @@ Job_Booster/
 │   │   ├── langchain_layer/    # LangGraph backend (see above)
 │   │   ├── state.py            # Shared PipelineState
 │   │   └── pipelines.yaml      # Pipeline definitions
-│   ├── services/               # Business logic (15 modules)
+│   ├── services/               # Business logic (22 modules)
 │   ├── models/                 # Pydantic + SQLAlchemy models
 │   ├── prompts/                # LLM prompt templates (Markdown)
 │   └── ui/                     # Gradio tab components + API client
@@ -433,7 +436,7 @@ Job_Booster/
 │   └── tools/
 ├── data/                       # Sample resumes, jobs, startups
 ├── docs/                       # Vision, Architecture, Implementation
-├── tests/                      # 200 tests, 13 files
+├── tests/                      # 213 tests, 24 files
 ├── scripts/
 │   ├── run_app.py              # Launch script
 │   └── healthcheck.sh          # Docker health check
@@ -448,19 +451,20 @@ Job_Booster/
 
 ## Gradio UI Tabs
 
-The web interface includes 9 tabs for the complete job search workflow:
+The web interface includes 10 tabs for the complete job search workflow:
 
 | # | Tab | Purpose |
 |---|-----|---------|
-| 1 | **Dashboard** | Overview of your job search at a glance |
+| 1 | **Overview** | Dashboard of your job search at a glance |
 | 2 | **Apply** | Full application package: tailored resume + cover letter + analysis |
-| 3 | **Discover Jobs** | Search Indeed, LinkedIn, Wuzzuf, RemoteOK, and Adzuna |
-| 4 | **Search** | Semantic search across stored resumes and jobs |
-| 5 | **Startup Scanner** | Scan AI/ML startup career pages for relevant openings |
-| 6 | **Recommendations** | Job recommendations and skill gap analysis |
-| 7 | **Application Tracker** | Track and manage job applications with status updates |
-| 8 | **Analytics** | Stats, trends, and skill market insights |
-| 9 | **Auth** | Register, login, and manage your profile |
+| 3 | **Discovery** | Imported corpus (BigSet) and external job board search |
+| 4 | **Pipelines** | Run discovery sync, daily scanner, and full application pipelines |
+| 5 | **Scanner** | Scan AI/ML startup career pages for relevant openings |
+| 6 | **Search** | Semantic search across stored resumes and jobs |
+| 7 | **Recommendations** | Job recommendations and skill gap analysis |
+| 8 | **Applications** | Track and manage job applications with status updates |
+| 9 | **Analytics** | Stats, trends, and skill market insights |
+| 10 | **Account** | Register, login, and manage your profile |
 
 ---
 
@@ -469,7 +473,7 @@ The web interface includes 9 tabs for the complete job search workflow:
 1. Fork the repo
 2. Create a feature branch (`git checkout -b feature/my-feature`)
 3. Make changes and add tests
-4. Run `ruff check . && pytest tests/ -v`
+4. Run `python -m ruff check . && python -m mypy app/ && python -m pytest -m "not integration"`
 5. Open a PR against `main`
 
 CI runs lint + tests automatically on every PR. Releases auto-push to GitHub Container Registry.

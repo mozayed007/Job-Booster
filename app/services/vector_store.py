@@ -38,6 +38,7 @@ class VectorStore:
     """
 
     _instance: Optional["VectorStore"] = None
+    _initialized: bool = False
 
     def __new__(cls, *args, **kwargs) -> "VectorStore":
         if cls._instance is None:
@@ -100,6 +101,7 @@ class VectorStore:
             vector=embedding,
             payload={"text": text, "doc_id": doc_id, **(metadata or {})},
         )
+        assert self._client is not None
         self._client.upsert(collection_name=collection, points=[point])
         logger.debug(f"VectorStore: upserted {doc_id} into {collection}")
 
@@ -129,7 +131,7 @@ class VectorStore:
         query_filter = None
         if filter_by:
             must = [FieldCondition(key=k, match=MatchValue(value=v)) for k, v in filter_by.items()]
-            query_filter = Filter(must=must)
+            query_filter = Filter(must=list(must))
 
         results = self._client.query_points(
             collection_name=collection,
@@ -156,6 +158,7 @@ class VectorStore:
         """Delete a document from a collection."""
         self._ensure_collection(collection)
         point_id = str(uuid.uuid5(uuid.NAMESPACE_URL, doc_id))
+        assert self._client is not None
         self._client.delete(
             collection_name=collection,
             points_selector=[point_id],

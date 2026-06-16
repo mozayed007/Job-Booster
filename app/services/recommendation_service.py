@@ -148,7 +148,7 @@ class RecommendationService:
     def _extract_skills(self, content_json: Any) -> list[str]:
         if not content_json or not isinstance(content_json, dict):
             return []
-        skills = []
+        skills: list[str] = []
         for key in ("skills", "technologies", "tools", "languages", "frameworks"):
             if key in content_json:
                 val = content_json[key]
@@ -169,20 +169,29 @@ class RecommendationService:
     ) -> list[dict[str, Any]]:
         if not self.db_service:
             return results
-        enriched = []
+
+        # Collect record IDs first to avoid N+1 DB queries.
+        id_to_item: dict[int, list[dict]] = {}
         for item in results:
             meta = item.get("metadata", {})
             record_id = meta.get(id_key) or meta.get("id")
             if record_id:
                 try:
                     record_id_int = int(str(record_id).split("_")[-1])
-                    records = self.db_service.query_records(
-                        db_table, limit=1, filter_conditions={"id": record_id_int}
-                    )
-                    if records:
-                        item["db_record"] = records[0]
+                    id_to_item.setdefault(record_id_int, []).append(item)
                 except (ValueError, Exception):
                     pass
+
+        if id_to_item:
+            records = self.db_service.query_records_by_ids(db_table, list(id_to_item.keys()))
+            for record in records:
+                record_id = record.get("id")
+                if record_id is not None:
+                    for item in id_to_item.get(int(record_id), []):
+                        item["db_record"] = record
+
+        enriched = []
+        for item in results:
             score = item.get("score")
             distance = item.get("distance")
             if score is None and distance is not None:

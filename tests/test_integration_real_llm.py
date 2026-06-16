@@ -180,8 +180,11 @@ class TestPipelineEndToEnd:
             job_text=sample_job,
         )
 
+        from app.pipelines.graph_engine import _extract_pipeline_state
+
         graph, start_node = build_pydantic_graph("resume_only")
-        result = await graph.run(inputs=start_node, state=initial_state)
+        run_result = await graph.run(start_node, state=initial_state)
+        result = _extract_pipeline_state(run_result, initial_state)
 
         assert isinstance(result, PipelineState)
         assert len(result.errors) == 0, f"Pipeline errors: {result.errors}"

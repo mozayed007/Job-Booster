@@ -89,7 +89,7 @@ class AdzunaScraper(BaseJobBoardScraper):
             import httpx
 
             url = "https://api.adzuna.com/v1/api/jobs/us/search/1"
-            params = {
+            params: dict[str, str | int] = {
                 "app_id": app_id,
                 "app_key": api_key,
                 "results_per_page": min(limit, 50),

@@ -14,6 +14,8 @@ from loguru import logger
 from pydantic import BaseModel
 from pydantic_settings import BaseSettings
 
+from app.core.config import settings
+
 # ---------------------------------------------------------------------------
 # Provider detection
 # ---------------------------------------------------------------------------
@@ -285,7 +287,10 @@ class ModelRegistry:
         try:
             import litellm
 
-            litellm.set_verbose = self.settings.litellm_verbose
+            # Only enable verbose logging in debug mode to avoid leaking
+            # prompts, API keys, or response contents in production logs.
+            if settings.DEBUG:
+                litellm.set_verbose = self.settings.litellm_verbose
             if self.settings.litellm_cache:
                 litellm.cache = litellm.Cache()
 

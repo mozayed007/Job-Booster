@@ -1,5 +1,7 @@
 """Resume Tailor Agent — tailors resumes to specific job descriptions."""
 
+from typing import cast
+
 from loguru import logger
 from pydantic import BaseModel, Field
 
@@ -52,7 +54,7 @@ class ResumeTailorAgent(BaseAgent):
 
         try:
             result = await self._agent.run(prompt)
-            output = result.output
+            output = cast(TailoredResumeOutput, result.output)
             output.format_type = format_type
             return output
         except Exception as e:
@@ -109,4 +111,4 @@ async def tailor_resume(
             format_type=format_type,
         )
 
-    return await agent.tailor(resume_text, job_text, format_type)
+    return await cast(ResumeTailorAgent, agent).tailor(resume_text, job_text, format_type)

@@ -257,7 +257,7 @@ class DatabaseService:
         jobs: list[dict[str, Any]],
         *,
         dedupe: bool = False,
-    ) -> list[int]:
+    ) -> list[int | None]:
         """Bulk-insert scraped job postings into the job_postings table.
 
         Args:
@@ -266,17 +266,22 @@ class DatabaseService:
             dedupe: skip rows that match an existing posting (by URL or company+title).
 
         Returns:
-            List of inserted record IDs.
+            List aligned with ``jobs`` containing the inserted record ID for each
+            row, or ``None`` when a row was skipped by deduplication or failed to
+            insert. This alignment lets callers safely pair each input with its ID
+            instead of relying on positional ``zip()`` that breaks when rows are
+            dropped.
         """
         from app.services.job_dedupe import find_existing_job
 
-        inserted_ids: list[int] = []
+        inserted_ids: list[int | None] = []
         try:
             for job_data in jobs:
                 company = job_data.get("company") or ""
                 title = job_data.get("title", "")
                 url = job_data.get("source_url") or ""
                 if dedupe and find_existing_job(self.db, company, title, url):
+                    inserted_ids.append(None)
                     continue
                 job_db = JobPostingDB(
                     title=title,
@@ -290,7 +295,8 @@ class DatabaseService:
                 self.db.flush()
                 inserted_ids.append(job_db.id)
             self.db.commit()
-            logger.info(f"Stored {len(inserted_ids)} scraped jobs in batch")
+            stored_count = len([i for i in inserted_ids if i is not None])
+            logger.info(f"Stored {stored_count} scraped jobs in batch")
         except Exception as e:
             self.db.rollback()
             logger.error(f"Error in batch job insert: {e}")
@@ -353,7 +359,8 @@ class DatabaseService:
             self.db.add(record)
             self.db.commit()
             self.db.refresh(record)
-            return record.id
+            record_id: int | None = record.id
+            return record_id
         except Exception as e:
             self.db.rollback()
             logger.error(f"Error inserting into {table_name}: {e}")
@@ -388,4 +395,26 @@ class DatabaseService:
             return result
         except Exception as e:
             logger.error(f"Error querying {table_name}: {e}")
+            return []
+
+    def query_records_by_ids(self, table_name: str, ids: list[int]) -> list[dict[str, Any]]:
+        """Fetch multiple records by primary key in a single query."""
+        model_class = self._get_model_by_name(table_name)
+        if not model_class:
+            logger.error(f"Unknown table: {table_name}")
+            return []
+        if not ids:
+            return []
+        try:
+            records = self.db.query(model_class).filter(model_class.id.in_(ids)).all()
+            result = []
+            for r in records:
+                d = {}
+                for col in r.__table__.columns:
+                    val = getattr(r, col.name)
+                    d[col.name] = str(val) if val is not None else None
+                result.append(d)
+            return result
+        except Exception as e:
+            logger.error(f"Error querying {table_name} by ids: {e}")
             return []

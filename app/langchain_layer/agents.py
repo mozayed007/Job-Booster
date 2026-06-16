@@ -78,7 +78,7 @@ class LangChainAgent:
             # Required fields exist; construct without validation and attach error.
             instance = self._output_type.model_construct()
             if hasattr(instance, "errors"):
-                instance.errors = [error_message]  # type: ignore[attr-defined]
+                instance.errors = [error_message]
             return instance
 
 

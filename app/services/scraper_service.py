@@ -8,24 +8,33 @@ keywords, homepage fallback. Subclasses only implement _fetch_content().
 import asyncio
 import os
 from abc import ABC, abstractmethod
+from typing import Any
 from urllib.parse import urljoin
 
-try:
-    import logfire
-except ImportError:
-    logfire = None
-
 from loguru import logger
+
+from app.services.career_scraper import CAREER_KEYWORDS, CAREER_PATHS
+
+logfire: Any = None
+try:
+    import logfire as _logfire
+
+    logfire = _logfire
+except ImportError:
+    pass
+
+
+class _TinyFishAPIError(Exception):
+    """Fallback exception class when the TinyFish SDK is not installed."""
+
 
 try:
     from tinyfish import APIError, AsyncTinyFish
     from tinyfish.search.types import SearchResult
 except ImportError:
-    APIError = None  # type: ignore[misc,assignment]
+    APIError = _TinyFishAPIError  # type: ignore[misc,assignment]
     AsyncTinyFish = None  # type: ignore[misc,assignment]
     SearchResult = None  # type: ignore[misc,assignment]
-
-from app.services.career_scraper import CAREER_KEYWORDS, CAREER_PATHS
 
 
 def _span(name: str, **kwargs):
@@ -250,7 +259,7 @@ class Crawl4AIScraper(BaseCareerScraper):
                     ),
                 )
                 if result.success and result.markdown:
-                    return result.markdown
+                    return str(result.markdown)
                 return None
             except Exception as e:
                 logger.debug(f"Crawl4AI failed for {url}: {e}")

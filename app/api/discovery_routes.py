@@ -1,11 +1,11 @@
 """Job discovery endpoints — search across multiple job boards."""
 
-
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
 from loguru import logger
 from pydantic import BaseModel, Field
 
 from app.core.config import settings
+from app.core.upload_validation import SPREADSHEET_EXTENSIONS, validate_upload
 from app.middleware.auth_middleware import get_current_user_dependency
 from app.models.db_models import User
 from app.services.bigset_import_service import (
@@ -73,7 +73,7 @@ async def discovery_search(request: DiscoverySearchRequest):
         }
     except Exception as e:
         logger.error(f"Discovery search error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/sources")
@@ -92,16 +92,18 @@ async def index_discovered_jobs(request: IndexJobsRequest):
 
         job_dicts = []
         for job in request.jobs:
-            job_dicts.append({
-                "title": job.get("title", ""),
-                "company": job.get("company", ""),
-                "location": job.get("location", ""),
-                "raw_text": (
-                    f"{job.get('title', '')} at {job.get('company', '')}. "
-                    f"{job.get('description', '')}"
-                ),
-                "source_url": job.get("url", ""),
-            })
+            job_dicts.append(
+                {
+                    "title": job.get("title", ""),
+                    "company": job.get("company", ""),
+                    "location": job.get("location", ""),
+                    "raw_text": (
+                        f"{job.get('title', '')} at {job.get('company', '')}. "
+                        f"{job.get('description', '')}"
+                    ),
+                    "source_url": job.get("url", ""),
+                }
+            )
 
         inserted_ids = db_svc.store_scraped_jobs_batch(job_dicts)
 
@@ -112,6 +114,8 @@ async def index_discovered_jobs(request: IndexJobsRequest):
             if vs.is_available and inserted_ids:
                 search_svc = SearchService(vector_store=vs)
                 for job_data, job_id in zip(job_dicts, inserted_ids):
+                    if job_id is None:
+                        continue
                     await search_svc.index_job(job_id, job_data["raw_text"][:5000])
                     indexed += 1
         except Exception as e:
@@ -125,14 +129,14 @@ async def index_discovered_jobs(request: IndexJobsRequest):
         }
     except Exception as e:
         logger.error(f"Index discovered jobs error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
     finally:
         db.close()
 
 
 @router.get("/jobs/ranked")
 async def ranked_imported_jobs(
-    limit: int = 20,
+    limit: int = Query(20, ge=1, le=100),
     min_score: float | None = None,
     query: str = "",
     _user: User = Depends(get_current_user_dependency),
@@ -183,8 +187,7 @@ async def bigset_preview(
     _user: User = Depends(get_current_user_dependency),
 ):
     """Preview CSV/XLSX columns against a mapping without importing."""
-    if not file.filename:
-        raise HTTPException(status_code=400, detail="Missing filename")
+    validate_upload(file, allowed_extensions=SPREADSHEET_EXTENSIONS)
     max_bytes = getattr(settings, "BIGSET_MAX_UPLOAD_BYTES", 52_428_800)
     content = await file.read()
     if len(content) > max_bytes:
@@ -195,7 +198,7 @@ async def bigset_preview(
     if not content:
         raise HTTPException(status_code=400, detail="Empty file")
 
-    result = preview_import(content, file.filename, mapping_id)
+    result = preview_import(content, file.filename or "upload", mapping_id)
     if not result.get("success"):
         raise HTTPException(status_code=400, detail=result.get("errors", result))
     return {"success": True, **result}
@@ -252,8 +255,7 @@ async def bigset_import(
     _user: User = Depends(get_current_user_dependency),
 ):
     """Import a BigSet CSV/XLSX export into startups and job discovery tables."""
-    if not file.filename:
-        raise HTTPException(status_code=400, detail="Missing filename")
+    validate_upload(file, allowed_extensions=SPREADSHEET_EXTENSIONS)
     max_bytes = getattr(settings, "BIGSET_MAX_UPLOAD_BYTES", 52_428_800)
     content = await file.read()
     if len(content) > max_bytes:
@@ -267,7 +269,7 @@ async def bigset_import(
     db = get_db_session()
     try:
         svc = BigSetImportService(db)
-        result = await svc.import_file(content, file.filename, mapping_id)
+        result = await svc.import_file(content, file.filename or "upload", mapping_id)
         if not result.success:
             raise HTTPException(status_code=400, detail=result.errors)
         return {"success": True, **result.model_dump()}
@@ -275,6 +277,6 @@ async def bigset_import(
         raise
     except Exception as e:
         logger.error("BigSet import error: {}", e)
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        raise HTTPException(status_code=500, detail="Internal server error") from e
     finally:
         db.close()

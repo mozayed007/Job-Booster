@@ -1,5 +1,7 @@
 """Post-Application Outreach Agent — follow-ups, thank-you notes, cold outreach."""
 
+from typing import cast
+
 from loguru import logger
 from pydantic import BaseModel, Field
 
@@ -79,7 +81,7 @@ class OutreachAgent(BaseAgent):
 
         try:
             result = await self._agent.run(prompt)
-            return result.output
+            return cast(OutreachOutput, result.output)
         except Exception as e:
             logger.error(f"Outreach generation failed: {e}")
             return OutreachOutput(
@@ -158,7 +160,7 @@ async def generate_outreach(
             sending_tips=["Error: Outreach agent not available."],
         )
 
-    return await agent.generate(
+    return await cast(OutreachAgent, agent).generate(
         resume_text,
         job_text,
         company_name,

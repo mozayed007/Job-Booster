@@ -19,7 +19,7 @@ async def dashboard(user_id: int | None = None):
         return {"success": True, "data": data}
     except Exception as e:
         logger.error(f"Dashboard error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
     finally:
         db.close()
 
@@ -34,7 +34,7 @@ async def resume_stats():
         return {"success": True, "stats": stats}
     except Exception as e:
         logger.error(f"Resume stats error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
     finally:
         db.close()
 
@@ -49,7 +49,7 @@ async def job_stats():
         return {"success": True, "stats": stats}
     except Exception as e:
         logger.error(f"Job stats error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
     finally:
         db.close()
 
@@ -64,7 +64,7 @@ async def skill_trends():
         return {"success": True, "trends": trends}
     except Exception as e:
         logger.error(f"Skill trends error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
     finally:
         db.close()
 
@@ -79,6 +79,6 @@ async def scanner_stats():
         return {"success": True, "stats": stats}
     except Exception as e:
         logger.error(f"Scanner stats error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
     finally:
         db.close()

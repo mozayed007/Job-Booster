@@ -258,11 +258,20 @@ def export_content(
     if key not in exporters:
         key = "text"
 
-    exporter, media_type = exporters[key]
-    if key in ("latex", "tex") and resume is not None:
-        result = exporter(content, title, resume=resume)
+    _, media_type = exporters[key]
+    if key in ("latex", "tex"):
+        if resume is not None:
+            result: str | bytes = export_to_latex(content, title, resume=resume)
+        else:
+            result = export_to_latex(content, title)
+    elif key == "docx":
+        result = export_to_docx(content, title)
+    elif key == "pdf":
+        result = export_to_pdf(content, title)
+    elif key == "html":
+        result = export_to_html(content, title)
     else:
-        result = exporter(content, title)
+        result = export_to_markdown(content, title)
 
     if isinstance(result, bytes):
         return result, media_type

@@ -1,12 +1,8 @@
 """Career Scraper Service - Scrapes career pages using Crawl4AI."""
 
 import asyncio
+from typing import Any
 from urllib.parse import urljoin
-
-try:
-    import logfire
-except ImportError:
-    logfire = None
 
 from loguru import logger
 
@@ -17,6 +13,14 @@ try:
 except ImportError:
     CRAWL4AI_AVAILABLE = False
     logger.warning("Crawl4AI not installed. Run: pip install crawl4ai")
+
+logfire: Any = None
+try:
+    import logfire as _logfire
+
+    logfire = _logfire
+except ImportError:
+    pass
 
 
 def _span(name: str, **kwargs):
@@ -91,7 +95,7 @@ class CareerScraper:
                 content_lower = result.markdown.lower()
                 if any(kw in content_lower for kw in CAREER_KEYWORDS):
                     logger.debug(f"Found career page: {url}")
-                    return result.markdown
+                    return str(result.markdown)
         except Exception as e:
             logger.debug(f"Failed to scrape {url}: {e}")
 
@@ -143,7 +147,7 @@ class CareerScraper:
                         content_lower = result.markdown.lower()
                         if any(kw in content_lower for kw in CAREER_KEYWORDS):
                             _info("career_content_in_homepage", website=website)
-                            return result.markdown
+                            return str(result.markdown)
                 except Exception as e:
                     logger.debug(f"Failed to scrape homepage {website}: {e}")
 

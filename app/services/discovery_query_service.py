@@ -28,6 +28,9 @@ async def search_imported_jobs(
     if own_db:
         db = get_db_session()
 
+    if db is None:
+        return []
+
     if not query.strip():
         try:
             return rank_imported_jobs(db, profile, limit=limit)
@@ -77,15 +80,17 @@ async def search_imported_jobs(
                 continue
             fit = row["fit_score"]
             entry = merged.get(jid, {"id": jid})
-            entry.update({
-                "title": row.get("title"),
-                "company": row.get("company"),
-                "location": row.get("location"),
-                "source_url": row.get("source_url"),
-                "fit_score": fit,
-                "snippet": entry.get("snippet") or row.get("snippet"),
-                "mapping_id": row.get("mapping_id"),
-            })
+            entry.update(
+                {
+                    "title": row.get("title"),
+                    "company": row.get("company"),
+                    "location": row.get("location"),
+                    "source_url": row.get("source_url"),
+                    "fit_score": fit,
+                    "snippet": entry.get("snippet") or row.get("snippet"),
+                    "mapping_id": row.get("mapping_id"),
+                }
+            )
             search_score = entry.get("search_score", 0.0)
             entry["combined_score"] = round(
                 0.6 * fit + 0.4 * float(search_score),

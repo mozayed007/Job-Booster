@@ -1,5 +1,7 @@
 """Job Finder Agent — finds job listings matching the user's resume and preferences."""
 
+from typing import cast
+
 from loguru import logger
 from pydantic import BaseModel, Field
 
@@ -102,7 +104,7 @@ class JobFinderAgent(BaseAgent):
 
         try:
             result = await self._agent.run(prompt)
-            return result.output
+            return cast(JobFinderOutput, result.output)
         except Exception as e:
             logger.error(f"Job search failed: {e}")
             return JobFinderOutput(
@@ -220,19 +222,19 @@ class JobFinderAgent(BaseAgent):
                     f"{j.get('title')} @ {j.get('company')} "
                     f"({j.get('location', '')}) — {j.get('snippet', '')[:120]}"
                 )
-            parts.append(
-                "- Use tool search_imported_jobs for deeper queries on this corpus."
-            )
+            parts.append("- Use tool search_imported_jobs for deeper queries on this corpus.")
 
-        parts.extend([
-            f"- Max Results: {max_results}",
-            "",
-            "## Instructions",
-            "1. Generate targeted search queries for credible sources",
-            "2. Score each listing on skill overlap, role match, location fit",
-            "3. Research visa sponsorship status where relevant",
-            "4. Provide a summary with recommendations",
-        ])
+        parts.extend(
+            [
+                f"- Max Results: {max_results}",
+                "",
+                "## Instructions",
+                "1. Generate targeted search queries for credible sources",
+                "2. Score each listing on skill overlap, role match, location fit",
+                "3. Research visa sponsorship status where relevant",
+                "4. Provide a summary with recommendations",
+            ]
+        )
 
         return "\n".join(parts)
 
@@ -270,7 +272,7 @@ async def find_jobs(
             summary="Error: Job finder agent not available.",
         )
 
-    return await agent.search(
+    return await cast(JobFinderAgent, agent).search(
         resume_text,
         top_skills,
         target_roles,

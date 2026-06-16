@@ -45,13 +45,15 @@ def build_job_boards_tab() -> None:
         rows = []
         for source, jobs in (result.get("results") or {}).items():
             for j in jobs:
-                rows.append([
-                    j.get("title", ""),
-                    j.get("company", ""),
-                    j.get("location", ""),
-                    source,
-                    j.get("url", ""),
-                ])
+                rows.append(
+                    [
+                        j.get("title", ""),
+                        j.get("company", ""),
+                        j.get("location", ""),
+                        source,
+                        j.get("url", ""),
+                    ]
+                )
         summary = {
             "total": result.get("total", 0),
             "by_source": result.get("by_source", {}),

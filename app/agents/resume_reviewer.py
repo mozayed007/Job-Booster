@@ -1,5 +1,7 @@
 """Resume Reviewer Agent — reviews and rewrites resume bullets using XYZ formula."""
 
+from typing import cast
+
 from loguru import logger
 from pydantic import BaseModel, Field
 
@@ -72,7 +74,7 @@ class ResumeReviewerAgent(BaseAgent):
 
         try:
             result = await self._agent.run(prompt)
-            return result.output
+            return cast(ResumeReviewerOutput, result.output)
         except Exception as e:
             logger.error(f"Resume review failed: {e}")
             return ResumeReviewerOutput(
@@ -140,4 +142,4 @@ async def review_resume(
             metric_questions=[],
         )
 
-    return await agent.review(resume_text, job_description)
+    return await cast(ResumeReviewerAgent, agent).review(resume_text, job_description)

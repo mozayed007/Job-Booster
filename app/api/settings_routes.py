@@ -27,4 +27,4 @@ async def put_profile(
         path = save_user_profile(profile)
         return {"success": True, "path": str(path), "profile": profile.model_dump()}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        raise HTTPException(status_code=500, detail="Internal server error") from e

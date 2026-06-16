@@ -73,6 +73,6 @@ async def get_dashboard(user_id: int | None = None, resume_id: int | None = None
         }
     except Exception as e:
         logger.error(f"Dashboard error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
     finally:
         db.close()

@@ -49,7 +49,7 @@ async def search_resumes(request: SearchRequest):
         raise
     except Exception as e:
         logger.error(f"Resume search error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/jobs")
@@ -63,7 +63,7 @@ async def search_jobs(request: SearchRequest):
         raise
     except Exception as e:
         logger.error(f"Job search error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/hybrid")
@@ -89,7 +89,7 @@ async def hybrid_search(request: HybridSearchRequest):
         raise
     except Exception as e:
         logger.error(f"Hybrid search error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/index/resume/{resume_id}")
@@ -107,7 +107,7 @@ async def index_resume(resume_id: int, request: IndexDocumentRequest):
         raise
     except Exception as e:
         logger.error(f"Resume indexing error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/index/job/{job_id}")
@@ -125,7 +125,7 @@ async def index_job(job_id: int, request: IndexDocumentRequest):
         raise
     except Exception as e:
         logger.error(f"Job indexing error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/stats")
@@ -136,4 +136,4 @@ async def get_stats():
         return {"success": True, "stats": vs.get_all_stats()}
     except Exception as e:
         logger.error(f"Stats error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")

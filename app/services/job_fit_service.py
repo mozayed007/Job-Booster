@@ -82,18 +82,20 @@ def rank_imported_jobs(
     scored.sort(key=lambda x: (-x[0], x[1].id or 0))
     out: list[dict[str, Any]] = []
     for fit, job in scored[:limit]:
-        out.append({
-            "id": job.id,
-            "title": job.title,
-            "company": job.company,
-            "location": job.location,
-            "source_url": job.source_url,
-            "fit_score": round(fit, 3),
-            "snippet": (job.raw_text or "")[:400],
-            "mapping_id": (job.content_json or {}).get("mapping_id")
-            if isinstance(job.content_json, dict)
-            else None,
-        })
+        out.append(
+            {
+                "id": job.id,
+                "title": job.title,
+                "company": job.company,
+                "location": job.location,
+                "source_url": job.source_url,
+                "fit_score": round(fit, 3),
+                "snippet": (job.raw_text or "")[:400],
+                "mapping_id": (job.content_json or {}).get("mapping_id")
+                if isinstance(job.content_json, dict)
+                else None,
+            }
+        )
     return out
 
 

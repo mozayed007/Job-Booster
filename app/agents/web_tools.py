@@ -10,10 +10,15 @@ from functools import lru_cache
 from loguru import logger
 from pydantic_ai import Tool
 
+
+class _TinyFishAPIError(Exception):
+    """Fallback exception class when the TinyFish SDK is not installed."""
+
+
 try:
     from tinyfish import APIError, AsyncTinyFish
 except ImportError:
-    APIError = None  # type: ignore[misc,assignment]
+    APIError = _TinyFishAPIError  # type: ignore[misc,assignment]
     AsyncTinyFish = None  # type: ignore[misc,assignment]
 
 

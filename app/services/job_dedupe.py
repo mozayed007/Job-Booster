@@ -35,23 +35,13 @@ def find_existing_job(
     company = (company or "").strip()
     title = (title or "").strip()
     if url:
-        return (
-            db.query(JobPostingDB)
-            .filter(JobPostingDB.source_url == url)
-            .first()
-        )
+        return db.query(JobPostingDB).filter(JobPostingDB.source_url == url).first()
     if company_stub:
         stub_key = title.lower()
-        rows = (
-            db.query(JobPostingDB)
-            .filter(JobPostingDB.company == company)
-            .all()
-        )
+        rows = db.query(JobPostingDB).filter(JobPostingDB.company == company).all()
         for row in rows:
             row_title = (row.title or "").strip()
-            if row_title.lower() == stub_key or row_title.lower().startswith(
-                f"{stub_key} ("
-            ):
+            if row_title.lower() == stub_key or row_title.lower().startswith(f"{stub_key} ("):
                 return row
         return None
     return (

@@ -188,6 +188,8 @@ def parse_tabular_file(content: bytes, filename: str) -> list[dict[str, str]]:
             ) from e
         wb = openpyxl.load_workbook(io.BytesIO(content), read_only=True, data_only=True)
         ws = wb.active
+        if ws is None:
+            raise ValueError("Workbook has no active worksheet")
         rows_iter = ws.iter_rows(values_only=True)
         headers = [str(c or "").strip() for c in next(rows_iter, [])]
         rows: list[dict[str, str]] = []
@@ -213,10 +215,7 @@ def _row_value(row: dict[str, str], header: str | None) -> str:
 
 
 def _mapped_fields(row: dict[str, str], profile: MappingProfile) -> dict[str, str]:
-    return {
-        internal: _row_value(row, header)
-        for internal, header in profile.columns.items()
-    }
+    return {internal: _row_value(row, header) for internal, header in profile.columns.items()}
 
 
 def _utc_now() -> datetime:
@@ -376,9 +375,7 @@ class BigSetImportService:
                         f"{desc}. Stage: {funding or 'n/a'}. "
                         f"Open roles: {open_roles or 'n/a'}. source:{BIGSET_SOURCE}"
                     )
-                    key = job_dedupe_key(
-                        company, stub, website, company_stub=True
-                    )
+                    key = job_dedupe_key(company, stub, website, company_stub=True)
                     parsed = {"source": BIGSET_SOURCE, "mapping_id": mid}
                     if key in seen_jobs:
                         existing = find_existing_job(
@@ -401,14 +398,16 @@ class BigSetImportService:
                             skipped += 1
                         continue
                     seen_jobs.add(key)
-                    job_dicts.append({
-                        "title": display_title,
-                        "company": company,
-                        "location": location,
-                        "raw_text": f"{display_title} at {company}. {raw}",
-                        "source_url": website or None,
-                        "parsed_data": parsed,
-                    })
+                    job_dicts.append(
+                        {
+                            "title": display_title,
+                            "company": company,
+                            "location": location,
+                            "raw_text": f"{display_title} at {company}. {raw}",
+                            "source_url": website or None,
+                            "parsed_data": parsed,
+                        }
+                    )
                 else:
                     title = fields.get("title", "")
                     company = fields.get("company", "")
@@ -420,18 +419,13 @@ class BigSetImportService:
                     desc = fields.get("description", "")
                     key = job_dedupe_key(company, title, url)
                     if key in seen_jobs:
-                        existing = find_existing_job(
-                            self.db, company, title, url
-                        )
+                        existing = find_existing_job(self.db, company, title, url)
                         if existing:
                             self._refresh_existing_job(
                                 existing,
                                 display_title=title,
                                 location=location,
-                                raw_text=(
-                                    f"{title} at {company}. {desc} "
-                                    f"source:{BIGSET_SOURCE}"
-                                ),
+                                raw_text=(f"{title} at {company}. {desc} source:{BIGSET_SOURCE}"),
                                 parsed_data={
                                     "source": BIGSET_SOURCE,
                                     "mapping_id": mid,
@@ -442,35 +436,35 @@ class BigSetImportService:
                             skipped += 1
                         continue
                     seen_jobs.add(key)
-                    job_dicts.append({
-                        "title": title,
-                        "company": company,
-                        "location": location,
-                        "raw_text": (
-                            f"{title} at {company}. {desc} "
-                            f"source:{BIGSET_SOURCE}"
-                        ),
-                        "source_url": url or None,
-                        "parsed_data": {
-                            "source": BIGSET_SOURCE,
-                            "mapping_id": mid,
-                        },
-                    })
+                    job_dicts.append(
+                        {
+                            "title": title,
+                            "company": company,
+                            "location": location,
+                            "raw_text": (f"{title} at {company}. {desc} source:{BIGSET_SOURCE}"),
+                            "source_url": url or None,
+                            "parsed_data": {
+                                "source": BIGSET_SOURCE,
+                                "mapping_id": mid,
+                            },
+                        }
+                    )
 
             self.db.commit()
         except Exception:
             self.db.rollback()
             raise
 
-        inserted_ids = self.db_svc.store_scraped_jobs_batch(
-            job_dicts, dedupe=True
-        )
+        inserted_ids = self.db_svc.store_scraped_jobs_batch(job_dicts, dedupe=True)
+        stored = len([i for i in inserted_ids if i is not None])
         indexed = 0
         try:
             vs = get_vector_store()
-            if vs.is_available and inserted_ids:
+            if vs.is_available and any(i is not None for i in inserted_ids):
                 search_svc = SearchService(vector_store=vs)
                 for job_data, job_id in zip(job_dicts, inserted_ids):
+                    if job_id is None:
+                        continue
                     await search_svc.index_job(job_id, job_data["raw_text"][:5000])
                     indexed += 1
         except Exception as e:
@@ -478,7 +472,7 @@ class BigSetImportService:
 
         return BigSetImportResult(
             mapping_id=mid,
-            stored=len(inserted_ids),
+            stored=stored,
             startups_upserted=startups_upserted,
             skipped_duplicates=skipped + updated,
             indexed=indexed,
@@ -524,11 +518,7 @@ def get_seed_companies(
     from app.models.db_models import JobPostingDB
 
     keywords = [k for k in (skills or []) + (role_keywords or []) if k and k.strip()]
-    startups = (
-        db.query(StartupDB)
-        .filter(StartupDB.category == BIGSET_CATEGORY)
-        .all()
-    )
+    startups = db.query(StartupDB).filter(StartupDB.category == BIGSET_CATEGORY).all()
     if not keywords:
         return sorted(s.name for s in startups if s.name)[:limit]
 
@@ -542,12 +532,7 @@ def get_seed_companies(
                 [s.name, s.city or "", s.funding_round or "", s.website or ""],
             )
         )
-        jobs = (
-            db.query(JobPostingDB)
-            .filter(JobPostingDB.company == s.name)
-            .limit(5)
-            .all()
-        )
+        jobs = db.query(JobPostingDB).filter(JobPostingDB.company == s.name).limit(5).all()
         for j in jobs:
             blob += f" {j.title or ''} {j.raw_text or ''}"
         scored.append((_score_text_for_skills(blob, keywords), s.name))
@@ -613,7 +598,8 @@ def _load_folder_state() -> dict[str, float]:
     if not _import_state_path.exists():
         return {}
     try:
-        return json.loads(_import_state_path.read_text(encoding="utf-8"))
+        raw = json.loads(_import_state_path.read_text(encoding="utf-8"))
+        return raw if isinstance(raw, dict) else {}
     except Exception:
         return {}
 

@@ -22,6 +22,7 @@ from pydantic import BaseModel, create_model
 from pydantic_ai import Agent
 
 from profiles.provider_resolver import resolve_chain
+from profiles.runtimes.security import ProfileNotAllowedError, validate_profile_name
 
 PROFILES_DIR = Path(__file__).parent.parent
 AGENTS_DIR = PROFILES_DIR / "agents"
@@ -29,6 +30,11 @@ AGENTS_DIR = PROFILES_DIR / "agents"
 
 def _load_profile(name: str) -> dict[str, Any]:
     """Load an agent profile by name."""
+    try:
+        validate_profile_name(name)
+    except ProfileNotAllowedError as e:
+        raise ValueError(str(e)) from e
+
     path = AGENTS_DIR / f"{name}.yaml"
     if not path.exists():
         raise FileNotFoundError(f"Profile not found: {path}")

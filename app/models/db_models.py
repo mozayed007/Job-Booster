@@ -1,11 +1,10 @@
 """SQLite table schemas for Job_Booster application."""
 
 from datetime import datetime, timezone
+from typing import Any
 
 from sqlalchemy import (
-    JSON,
     Boolean,
-    Column,
     DateTime,
     Float,
     ForeignKey,
@@ -14,7 +13,8 @@ from sqlalchemy import (
     Text,
     create_engine,
 )
-from sqlalchemy.orm import DeclarativeBase, relationship
+from sqlalchemy.dialects.sqlite import JSON
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
 class Base(DeclarativeBase):
@@ -30,11 +30,11 @@ class User(Base):
 
     __tablename__ = "users"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    email = Column(String(255), unique=True, nullable=True)
-    name = Column(String(255), nullable=True)
-    profile_json = Column(JSON, nullable=True)
-    created_at = Column(DateTime, default=_utcnow)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    email: Mapped[str | None] = mapped_column(String(255), unique=True, nullable=True)
+    name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    profile_json: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
 
 
 class ResumeDB(Base):
@@ -42,14 +42,16 @@ class ResumeDB(Base):
 
     __tablename__ = "resumes"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
-    filename = Column(String(255))
-    content_json = Column(JSON)
-    raw_text = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=_utcnow)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("users.id"), nullable=True)
+    filename: Mapped[str] = mapped_column(String(255))
+    content_json: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    raw_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
 
-    versions = relationship("ResumeVersionDB", back_populates="resume")
+    versions: Mapped[list["ResumeVersionDB"]] = relationship(
+        "ResumeVersionDB", back_populates="resume"
+    )
 
 
 class ResumeVersionDB(Base):
@@ -57,16 +59,16 @@ class ResumeVersionDB(Base):
 
     __tablename__ = "resume_versions"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    resume_id = Column(Integer, ForeignKey("resumes.id"))
-    version_name = Column(String(255))
-    file_path = Column(String(512))
-    file_format = Column(String(10))
-    raw_text = Column(Text, nullable=True)
-    is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=_utcnow)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    resume_id: Mapped[int] = mapped_column(Integer, ForeignKey("resumes.id"))
+    version_name: Mapped[str] = mapped_column(String(255))
+    file_path: Mapped[str] = mapped_column(String(512))
+    file_format: Mapped[str] = mapped_column(String(10))
+    raw_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
 
-    resume = relationship("ResumeDB", back_populates="versions")
+    resume: Mapped["ResumeDB"] = relationship("ResumeDB", back_populates="versions")
 
 
 class JobPostingDB(Base):
@@ -74,14 +76,14 @@ class JobPostingDB(Base):
 
     __tablename__ = "job_postings"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    title = Column(String(255))
-    company = Column(String(255), nullable=True)
-    location = Column(String(255), nullable=True)
-    content_json = Column(JSON)
-    raw_text = Column(Text, nullable=True)
-    source_url = Column(String(512), nullable=True)
-    created_at = Column(DateTime, default=_utcnow)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    title: Mapped[str] = mapped_column(String(255))
+    company: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    location: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    content_json: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    raw_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    source_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
 
 
 class TailoredResumeDB(Base):
@@ -89,12 +91,12 @@ class TailoredResumeDB(Base):
 
     __tablename__ = "tailored_resumes"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    resume_id = Column(Integer, ForeignKey("resumes.id"))
-    job_id = Column(Integer, ForeignKey("job_postings.id"))
-    tailored_content = Column(Text)
-    match_score = Column(Float, nullable=True)
-    created_at = Column(DateTime, default=_utcnow)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    resume_id: Mapped[int] = mapped_column(Integer, ForeignKey("resumes.id"))
+    job_id: Mapped[int] = mapped_column(Integer, ForeignKey("job_postings.id"))
+    tailored_content: Mapped[str] = mapped_column(Text)
+    match_score: Mapped[float | None] = mapped_column(Float, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
 
 
 class AnalysisResultDB(Base):
@@ -102,11 +104,11 @@ class AnalysisResultDB(Base):
 
     __tablename__ = "analysis_results"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    resume_id = Column(Integer, ForeignKey("resumes.id"))
-    job_id = Column(Integer, ForeignKey("job_postings.id"))
-    analysis_json = Column(JSON)
-    created_at = Column(DateTime, default=_utcnow)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    resume_id: Mapped[int] = mapped_column(Integer, ForeignKey("resumes.id"))
+    job_id: Mapped[int] = mapped_column(Integer, ForeignKey("job_postings.id"))
+    analysis_json: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
 
 
 class StartupDB(Base):
@@ -114,20 +116,22 @@ class StartupDB(Base):
 
     __tablename__ = "startups"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    name = Column(String(255), unique=True)
-    city = Column(String(100))
-    category = Column(String(100))
-    website = Column(String(512), nullable=True)
-    linkedin = Column(String(512), nullable=True)
-    founded = Column(String(20), nullable=True)
-    employees = Column(String(50), nullable=True)
-    followers = Column(String(50), nullable=True)
-    funding_round = Column(String(100), nullable=True)
-    last_scanned = Column(DateTime, nullable=True)
-    created_at = Column(DateTime, default=_utcnow)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(String(255), unique=True)
+    city: Mapped[str] = mapped_column(String(100))
+    category: Mapped[str] = mapped_column(String(100))
+    website: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    linkedin: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    founded: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    employees: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    followers: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    funding_round: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    last_scanned: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
 
-    job_openings = relationship("ScannedJobDB", back_populates="startup")
+    job_openings: Mapped[list["ScannedJobDB"]] = relationship(
+        "ScannedJobDB", back_populates="startup"
+    )
 
 
 class ScannedJobDB(Base):
@@ -135,17 +139,17 @@ class ScannedJobDB(Base):
 
     __tablename__ = "scanned_jobs"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    startup_id = Column(Integer, ForeignKey("startups.id"))
-    title = Column(String(255))
-    location = Column(String(255), nullable=True)
-    requirements_json = Column(JSON, nullable=True)
-    link = Column(String(512))
-    relevance_score = Column(Float, default=0.0)
-    is_applied = Column(Boolean, default=False)
-    discovered_at = Column(DateTime, default=_utcnow)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    startup_id: Mapped[int] = mapped_column(Integer, ForeignKey("startups.id"))
+    title: Mapped[str] = mapped_column(String(255))
+    location: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    requirements_json: Mapped[list[Any] | None] = mapped_column(JSON, nullable=True)
+    link: Mapped[str] = mapped_column(String(512))
+    relevance_score: Mapped[float] = mapped_column(Float, default=0.0)
+    is_applied: Mapped[bool] = mapped_column(Boolean, default=False)
+    discovered_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
 
-    startup = relationship("StartupDB", back_populates="job_openings")
+    startup: Mapped["StartupDB"] = relationship("StartupDB", back_populates="job_openings")
 
 
 class ScannerStateDB(Base):
@@ -153,11 +157,11 @@ class ScannerStateDB(Base):
 
     __tablename__ = "scanner_state"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    state_json = Column(JSON)
-    batch_number = Column(Integer, default=0)
-    status = Column(String(20), default="in_progress")
-    last_updated = Column(DateTime, default=_utcnow)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    state_json: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    batch_number: Mapped[int] = mapped_column(Integer, default=0)
+    status: Mapped[str] = mapped_column(String(20), default="in_progress")
+    last_updated: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
 
 
 class CoverLetterDB(Base):
@@ -165,13 +169,15 @@ class CoverLetterDB(Base):
 
     __tablename__ = "cover_letters"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    resume_id = Column(Integer, ForeignKey("resumes.id"), nullable=True)
-    job_id = Column(Integer, ForeignKey("job_postings.id"), nullable=True)
-    cover_letter_text = Column(Text)
-    key_highlights_json = Column(JSON, nullable=True)
-    company_name = Column(String(255), nullable=True)
-    created_at = Column(DateTime, default=_utcnow)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    resume_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("resumes.id"), nullable=True)
+    job_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("job_postings.id"), nullable=True
+    )
+    cover_letter_text: Mapped[str] = mapped_column(Text)
+    key_highlights_json: Mapped[list[Any] | None] = mapped_column(JSON, nullable=True)
+    company_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
 
 
 class ApplicationDB(Base):
@@ -179,16 +185,18 @@ class ApplicationDB(Base):
 
     __tablename__ = "applications"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
-    job_id = Column(Integer, ForeignKey("job_postings.id"), nullable=True)
-    resume_id = Column(Integer, ForeignKey("resumes.id"), nullable=True)
-    company_name = Column(String(255))
-    position_title = Column(String(255))
-    status = Column(String(50), default="applied")
-    notes = Column(Text, nullable=True)
-    applied_at = Column(DateTime, default=_utcnow)
-    updated_at = Column(DateTime, default=_utcnow, onupdate=_utcnow)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("users.id"), nullable=True)
+    job_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("job_postings.id"), nullable=True
+    )
+    resume_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("resumes.id"), nullable=True)
+    company_name: Mapped[str] = mapped_column(String(255))
+    position_title: Mapped[str] = mapped_column(String(255))
+    status: Mapped[str] = mapped_column(String(50), default="applied")
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    applied_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow, onupdate=_utcnow)
 
 
 class PipelineRun(Base):
@@ -196,19 +204,19 @@ class PipelineRun(Base):
 
     __tablename__ = "pipeline_runs"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
-    pipeline_key = Column(String(100), nullable=False)
-    pipeline_name = Column(String(255))
-    status = Column(String(50), default="pending")
-    steps_completed = Column(Integer, default=0)
-    total_steps = Column(Integer, default=0)
-    artifacts_json = Column(JSON, nullable=True)
-    errors_json = Column(JSON, nullable=True)
-    resume_text = Column(Text, nullable=True)
-    job_text = Column(Text, nullable=True)
-    started_at = Column(DateTime, default=_utcnow)
-    completed_at = Column(DateTime, nullable=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("users.id"), nullable=True)
+    pipeline_key: Mapped[str] = mapped_column(String(100), nullable=False)
+    pipeline_name: Mapped[str] = mapped_column(String(255))
+    status: Mapped[str] = mapped_column(String(50), default="pending")
+    steps_completed: Mapped[int] = mapped_column(Integer, default=0)
+    total_steps: Mapped[int] = mapped_column(Integer, default=0)
+    artifacts_json: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+    errors_json: Mapped[list[Any] | None] = mapped_column(JSON, nullable=True)
+    resume_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    job_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    started_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
 
 def create_tables(engine_or_url):

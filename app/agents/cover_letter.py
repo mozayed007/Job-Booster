@@ -1,5 +1,7 @@
 """Cover Letter Generation Agent."""
 
+from typing import cast
+
 from loguru import logger
 from pydantic import BaseModel, Field
 
@@ -54,7 +56,7 @@ class CoverLetterAgent(BaseAgent):
 
         try:
             result = await self._agent.run(prompt)
-            return result.output
+            return cast(CoverLetterOutput, result.output)
         except Exception as e:
             logger.error(f"Cover letter generation failed: {e}")
             return CoverLetterOutput(
@@ -116,4 +118,6 @@ async def generate_cover_letter(
             tone="professional",
         )
 
-    return await agent.generate(resume_text, job_text, company_name, hiring_manager)
+    return await cast(CoverLetterAgent, agent).generate(
+        resume_text, job_text, company_name, hiring_manager
+    )

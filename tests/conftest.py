@@ -1,5 +1,14 @@
 """Shared pytest fixtures — in-memory SQLite and scanner reset."""
 
+import os
+
+# Tests import app.services.auth_service, which refuses to load in non-DEBUG
+# mode unless a JWT secret is configured. Provide a stable test secret here.
+os.environ.setdefault(
+    "JWT_SECRET_KEY",
+    "pytest-jwt-secret-do-not-use-in-production-0123456789abcdef",
+)
+
 import pytest
 import sqlalchemy.orm as orm
 from sqlalchemy import create_engine

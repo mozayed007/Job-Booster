@@ -1,5 +1,7 @@
 """Interview Prep Coach — behavioral questions, technical topics, STAR stories, prep tips."""
 
+from typing import cast
+
 from loguru import logger
 from pydantic import BaseModel, Field
 
@@ -73,7 +75,7 @@ class InterviewCoachAgent(BaseAgent):
 
         try:
             result = await self._agent.run(prompt)
-            return result.output
+            return cast(InterviewCoachOutput, result.output)
         except Exception as e:
             logger.error(f"Interview coaching failed: {e}")
             return InterviewCoachOutput(
@@ -153,4 +155,4 @@ async def prep_for_interview(
             preparation_tips=["Error: Interview coach agent not available."],
         )
 
-    return await agent.coach(resume_text, job_description, role_type)
+    return await cast(InterviewCoachAgent, agent).coach(resume_text, job_description, role_type)

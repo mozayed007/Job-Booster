@@ -1,6 +1,6 @@
 """FastAPI router for job recommendations."""
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from loguru import logger
 
 from app.services.db_service import DatabaseService, get_db_session
@@ -12,7 +12,7 @@ router = APIRouter(prefix="/recommendations", tags=["Recommendations"])
 
 
 @router.get("/jobs/{resume_id}")
-async def recommend_jobs(resume_id: int, limit: int = 10):
+async def recommend_jobs(resume_id: int, limit: int = Query(10, ge=1, le=100)):
     """Recommend jobs for a given resume using vector similarity."""
     db = get_db_session()
     try:
@@ -30,13 +30,13 @@ async def recommend_jobs(resume_id: int, limit: int = 10):
         raise
     except Exception as e:
         logger.error(f"Job recommendation error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
     finally:
         db.close()
 
 
 @router.get("/resumes/{job_id}")
-async def recommend_resumes(job_id: int, limit: int = 10):
+async def recommend_resumes(job_id: int, limit: int = Query(10, ge=1, le=100)):
     """Recommend resumes for a given job posting using vector similarity."""
     db = get_db_session()
     try:
@@ -54,7 +54,7 @@ async def recommend_resumes(job_id: int, limit: int = 10):
         raise
     except Exception as e:
         logger.error(f"Resume recommendation error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
     finally:
         db.close()
 
@@ -78,7 +78,7 @@ async def skill_gap(resume_id: int, job_id: int):
         raise
     except Exception as e:
         logger.error(f"Skill gap analysis error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
     finally:
         db.close()
 
@@ -102,6 +102,6 @@ async def career_suggestions(resume_id: int):
         raise
     except Exception as e:
         logger.error(f"Career suggestion error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
     finally:
         db.close()

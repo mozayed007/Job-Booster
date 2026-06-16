@@ -33,12 +33,14 @@ def _jobs_rows(jobs: list) -> list[list]:
     rows = []
     for j in jobs:
         if isinstance(j, dict):
-            rows.append([
-                j.get("startup_name", j.get("company", "")),
-                j.get("title", ""),
-                j.get("location", ""),
-                f"{j.get('relevance_score', j.get('fit_score', 0)):.2f}",
-            ])
+            rows.append(
+                [
+                    j.get("startup_name", j.get("company", "")),
+                    j.get("title", ""),
+                    j.get("location", ""),
+                    f"{j.get('relevance_score', j.get('fit_score', 0)):.2f}",
+                ]
+            )
         else:
             rows.append([getattr(j, "startup_name", ""), getattr(j, "title", ""), "", ""])
     return rows

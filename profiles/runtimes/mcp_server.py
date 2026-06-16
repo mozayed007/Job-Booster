@@ -29,6 +29,8 @@ import yaml
 # Add parent dirs to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
+from profiles.runtimes.security import ProfileNotAllowedError, validate_profile_name
+
 PROFILES_DIR = Path(__file__).parent.parent
 AGENTS_DIR = PROFILES_DIR / "agents"
 TOOLS_FILE = PROFILES_DIR / "tools" / "mcp_tools.json"
@@ -205,8 +207,9 @@ class MCPServer:
             return await self._run_agent(tool_name, arguments, req_id)
 
         try:
-            from app.ax.tool_registry import resolve_handler
             import inspect
+
+            from app.ax.tool_registry import resolve_handler
 
             handler = resolve_handler(tool_name)
             if handler is not None:
@@ -214,9 +217,7 @@ class MCPServer:
                     text = await handler(**arguments)
                 except TypeError:
                     sig = inspect.signature(handler)
-                    filtered = {
-                        k: v for k, v in arguments.items() if k in sig.parameters
-                    }
+                    filtered = {k: v for k, v in arguments.items() if k in sig.parameters}
                     text = await handler(**filtered)
                 return {
                     "jsonrpc": "2.0",
@@ -249,6 +250,18 @@ class MCPServer:
     ) -> dict[str, Any]:
         """Run an agent by building a prompt and calling the LLM."""
         profile_name = tool_name.removeprefix("agent_")
+        try:
+            validate_profile_name(profile_name)
+        except ProfileNotAllowedError as e:
+            return {
+                "jsonrpc": "2.0",
+                "id": req_id,
+                "error": {
+                    "code": -32602,
+                    "message": str(e),
+                },
+            }
+
         profiles = load_agent_profiles()
         profile = profiles.get(profile_name)
 

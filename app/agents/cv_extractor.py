@@ -1,5 +1,7 @@
 """CV Extractor Agent — extracts and tailors CV content to job descriptions."""
 
+from typing import cast
+
 from loguru import logger
 from pydantic import BaseModel, Field
 
@@ -57,7 +59,7 @@ class CvExtractorAgent(BaseAgent):
 
         try:
             result = await self._agent.run(prompt)
-            return result.output
+            return cast(CVExtractorOutput, result.output)
         except Exception as e:
             logger.error(f"CV extraction failed: {e}")
             return CVExtractorOutput(
@@ -115,4 +117,4 @@ async def tailor_resume_from_cv(
             missing_metrics=[],
         )
 
-    return await agent.extract_and_tailor(cv_text, job_text, output_format)
+    return await cast(CvExtractorAgent, agent).extract_and_tailor(cv_text, job_text, output_format)

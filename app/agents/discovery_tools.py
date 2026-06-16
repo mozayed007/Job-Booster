@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
+from typing import Any
 
 from pydantic_ai import Tool
 
@@ -17,6 +19,46 @@ from app.services.job_fit_service import jobs_for_company, rank_imported_jobs
 from app.services.user_profile_service import load_user_profile
 
 
+def _list_startups_sync(limit: int) -> list[dict[str, Any]]:
+    """Synchronous database work for list_imported_startups_tool."""
+    profile = load_user_profile()
+    db = get_db_session()
+    try:
+        startups = list_imported_startups(db)
+        ranked = rank_imported_jobs(db, profile, limit=limit)
+        by_company = {r["company"]: r.get("fit_score") for r in ranked if r.get("company")}
+        return [
+            {
+                "name": s.name,
+                "website": s.website,
+                "city": s.city,
+                "fit_hint": by_company.get(s.name),
+            }
+            for s in startups[:limit]
+        ]
+    finally:
+        db.close()
+
+
+def _jobs_for_company_sync(company: str, limit: int) -> list[dict[str, Any]]:
+    """Synchronous database work for imported_jobs_for_company_tool."""
+    db = get_db_session()
+    try:
+        jobs = jobs_for_company(db, company, limit=min(max(limit, 1), 20))
+        return [
+            {
+                "id": j.id,
+                "title": j.title,
+                "location": j.location,
+                "source_url": j.source_url,
+                "snippet": (j.raw_text or "")[:300],
+            }
+            for j in jobs
+        ]
+    finally:
+        db.close()
+
+
 async def search_imported_jobs_tool(
     query: str,
     limit: int = 10,
@@ -28,24 +70,8 @@ async def search_imported_jobs_tool(
 
 async def list_imported_startups_tool(limit: int = 20) -> str:
     """List startups imported from BigSet with websites."""
-    profile = load_user_profile()
-    db = get_db_session()
-    try:
-        startups = list_imported_startups(db)
-        ranked = rank_imported_jobs(db, profile, limit=limit)
-        by_company = {r["company"]: r.get("fit_score") for r in ranked if r.get("company")}
-        payload = [
-            {
-                "name": s.name,
-                "website": s.website,
-                "city": s.city,
-                "fit_hint": by_company.get(s.name),
-            }
-            for s in startups[:limit]
-        ]
-        return json.dumps(payload, indent=2)
-    finally:
-        db.close()
+    payload = await asyncio.to_thread(_list_startups_sync, limit)
+    return json.dumps(payload, indent=2)
 
 
 async def list_bigset_mappings_tool() -> str:
@@ -72,24 +98,8 @@ async def sync_bigset_folder_tool() -> str:
 
 async def imported_jobs_for_company_tool(company: str, limit: int = 5) -> str:
     """Return imported job stubs/listings for one company."""
-    db = get_db_session()
-    try:
-        jobs = jobs_for_company(db, company, limit=min(max(limit, 1), 20))
-        return json.dumps(
-            [
-                {
-                    "id": j.id,
-                    "title": j.title,
-                    "location": j.location,
-                    "source_url": j.source_url,
-                    "snippet": (j.raw_text or "")[:300],
-                }
-                for j in jobs
-            ],
-            indent=2,
-        )
-    finally:
-        db.close()
+    payload = await asyncio.to_thread(_jobs_for_company_sync, company, limit)
+    return json.dumps(payload, indent=2)
 
 
 search_imported_jobs_tool_wrapped = Tool(

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import yaml
 from langgraph.graph import END, START, StateGraph
@@ -206,7 +206,7 @@ class LangGraphPipeline:
             # LangGraph may return a plain dict even when the schema is a dataclass.
             if isinstance(final_state, dict):
                 return LCGraphState(**final_state)
-            return final_state
+            return cast(LCGraphState, final_state)
         except Exception as exc:
             logger.error(f"LangGraph pipeline '{pipeline_key}' failed: {exc}")
             return LCGraphState(

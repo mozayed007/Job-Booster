@@ -4,11 +4,7 @@ import asyncio
 import json
 from contextlib import contextmanager
 from pathlib import Path
-
-try:
-    import logfire
-except ImportError:
-    logfire = None
+from typing import Any, cast
 
 from loguru import logger
 
@@ -34,6 +30,14 @@ from app.services.job_fit_service import jobs_for_company
 from app.services.scraper_service import get_scraper
 from app.services.startup_parser import parse_startups_file
 from app.services.user_profile_service import load_user_profile
+
+logfire: Any = None
+try:
+    import logfire as _logfire
+
+    logfire = _logfire
+except ImportError:
+    pass
 
 
 @contextmanager
@@ -131,11 +135,7 @@ class StartupScannerAgent(BaseAgent):
                     roles = ", ".join(p.target_role_keywords)
                     locations = ", ".join(p.preferred_locations)
                     categories = ", ".join(p.preferred_categories)
-                    visa = (
-                        "required"
-                        if p.visa_support_required
-                        else "not specified"
-                    )
+                    visa = "required" if p.visa_support_required else "not specified"
                     profile_hint = (
                         "\n\nCandidate preferences:\n"
                         f"- Skills: {skills or 'derive from page'}\n"
@@ -145,10 +145,7 @@ class StartupScannerAgent(BaseAgent):
                         f"- Visa sponsorship: {visa}\n"
                         "- Score relevance_score against these preferences.\n"
                     )
-                prompt = (
-                    f"Startup: {startup_name}\n\nCareer Page Content:\n{content}"
-                    f"{profile_hint}"
-                )
+                prompt = f"Startup: {startup_name}\n\nCareer Page Content:\n{content}{profile_hint}"
 
                 result = await self.job_extractor.run(prompt)
 
@@ -193,15 +190,14 @@ class StartupScannerAgent(BaseAgent):
         finally:
             db.close()
 
-        with _trace("scan_startup", name=startup.name, city=startup.city):
+        with _trace("scan_startup", startup_name=startup.name, city=startup.city):
             import_hint = ""
             db_hint = get_db_session()
             try:
                 stubs = jobs_for_company(db_hint, startup.name)
                 if stubs:
                     import_hint = "\n\nKnown imported listings:\n" + "\n".join(
-                        f"- {j.title} ({j.location or 'n/a'})"
-                        for j in stubs[:5]
+                        f"- {j.title} ({j.location or 'n/a'})" for j in stubs[:5]
                     )
             finally:
                 db_hint.close()
@@ -251,10 +247,7 @@ class StartupScannerAgent(BaseAgent):
                 if s.name not in seen and s.website:
                     seen.add(s.name)
                     merged.append(s)
-            startups = [
-                s for s in merged
-                if s.name not in self.state.processed_startups
-            ]
+            startups = [s for s in merged if s.name not in self.state.processed_startups]
 
         batch = startups[:batch_size]
 
@@ -319,6 +312,8 @@ class StartupScannerAgent(BaseAgent):
                 if vs.is_available and inserted_ids:
                     search_svc = SearchService(vector_store=vs)
                     for job_opening, job_id in zip(jobs, inserted_ids):
+                        if job_id is None:
+                            continue
                         text = (
                             f"{job_opening.title} {job_opening.startup_name} "
                             f"{' '.join(job_opening.requirements)}"
@@ -349,27 +344,25 @@ class StartupScannerAgent(BaseAgent):
         if city and city.strip().lower() != "all":
             city_map = self._startup_city_map()
             needle = city.strip().lower()
-            roles = [
-                r
-                for r in roles
-                if city_map.get(r.startup_name.strip().lower(), "") == needle
-            ]
+            roles = [r for r in roles if city_map.get(r.startup_name.strip().lower(), "") == needle]
         return roles[:limit]
 
     def _startup_city_map(self) -> dict[str, str]:
         """Cached name → city map for display filtering."""
-        if getattr(self, "_city_map_cache", None) is None:
-            self._city_map_cache = {
-                s.name.strip().lower(): s.city.strip().lower()
+        cache = getattr(self, "_city_map_cache", None)
+        if cache is None:
+            cache = {
+                s.name.strip().lower(): (s.city or "").strip().lower()
                 for s in self._merged_startups_with_website()
             }
-        return self._city_map_cache
+            self._city_map_cache = cache
+        return cache
 
     def _merged_startups_with_website(self) -> list[Startup]:
         """Same merge as process_batch: BigSet imports + startups.md."""
         cached = getattr(self, "_merged_startups_cache", None)
         if cached is not None:
-            return cached
+            return cast(list[Startup], cached)
         file_startups = parse_startups_file()
         db = get_db_session()
         try:
@@ -409,7 +402,7 @@ async def quick_scan(batch_size: int = 5) -> list[JobOpening]:
         logger.error("Startup scanner agent not available")
         return []
 
-    return await agent.process_batch(batch_size=batch_size)
+    return await cast(StartupScannerAgent, agent).process_batch(batch_size=batch_size)
 
 
 if __name__ == "__main__":
@@ -423,9 +416,10 @@ if __name__ == "__main__":
             print("Error: startup_scanner agent not available")
             return
 
-        print("Progress:", agent.get_progress())
+        scanner = cast(StartupScannerAgent, agent)
+        print("Progress:", scanner.get_progress())
 
-        jobs = await agent.process_batch(batch_size=3)
+        jobs = await scanner.process_batch(batch_size=3)
         print(f"Found {len(jobs)} jobs")
 
         for job in jobs[:5]:

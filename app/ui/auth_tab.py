@@ -102,14 +102,30 @@ def build_auth_tab(api_token) -> None:
     def load_profile_fields(token):
         if not token:
             return (
-                "", "", "", "", False, True, True, 0.25, "generic_job_listing",
+                "",
+                "",
+                "",
+                "",
+                False,
+                True,
+                True,
+                0.25,
+                "generic_job_listing",
                 {"Error": "Sign in first"},
             )
         try:
             data = run_async(settings_get_profile(token))
             if data.get("Error"):
                 return (
-                    "", "", "", "", False, True, True, 0.25, "generic_job_listing",
+                    "",
+                    "",
+                    "",
+                    "",
+                    False,
+                    True,
+                    True,
+                    0.25,
+                    "generic_job_listing",
                     data,
                 )
             p = data.get("profile", data)
@@ -128,12 +144,29 @@ def build_auth_tab(api_token) -> None:
             )
         except Exception as e:
             return (
-                "", "", "", "", False, True, True, 0.25, "generic_job_listing",
+                "",
+                "",
+                "",
+                "",
+                False,
+                True,
+                True,
+                0.25,
+                "generic_job_listing",
                 {"Error": str(e)},
             )
 
     def save_profile_fields(
-        token, skills, locs, cats, roles, visa, bs_en, prefer_imported, min_fit, mapping,
+        token,
+        skills,
+        locs,
+        cats,
+        roles,
+        visa,
+        bs_en,
+        prefer_imported,
+        min_fit,
+        mapping,
     ):
         if not token:
             return {"Error": "Sign in first"}

@@ -16,8 +16,8 @@ try:
     APSCHEDULER_AVAILABLE = True
 except ImportError:
     APSCHEDULER_AVAILABLE = False
-    AsyncIOScheduler = None  # type: ignore[assignment,misc]
-    CronTrigger = None  # type: ignore[assignment,misc]
+    AsyncIOScheduler = None
+    CronTrigger = None
 
 
 _scheduler: Any = None
@@ -87,7 +87,7 @@ def schedule_pipeline(pipeline_key: str, cron_expression: str, **kwargs: Any) ->
         cron_expression,
         job.id,
     )
-    return job.id
+    return str(job.id)
 
 
 def schedule_bigset_folder_watch(cron_expression: str | None = None) -> str | None:
@@ -101,9 +101,7 @@ def schedule_bigset_folder_watch(cron_expression: str | None = None) -> str | No
     if scheduler is None:
         return None
 
-    cron = cron_expression or getattr(
-        settings, "BIGSET_FOLDER_WATCH_CRON", "0 */6 * * *"
-    )
+    cron = str(cron_expression or getattr(settings, "BIGSET_FOLDER_WATCH_CRON", "0 */6 * * *"))
     parts = cron.split()
     if len(parts) != 5:
         logger.error("Invalid BigSet folder-watch cron: {}", cron)
@@ -141,7 +139,7 @@ def schedule_bigset_folder_watch(cron_expression: str | None = None) -> str | No
         name="BigSet: import folder",
         replace_existing=True,
     )
-    return job.id
+    return str(job.id)
 
 
 def start_scheduler() -> None:
@@ -166,10 +164,15 @@ def start_scheduler() -> None:
 
 def stop_scheduler() -> None:
     """Stop the scheduler gracefully."""
+    global _scheduler
     scheduler = get_scheduler()
     if scheduler and scheduler.running:
-        scheduler.shutdown(wait=False)
-        logger.info("APScheduler stopped")
+        try:
+            scheduler.shutdown(wait=False)
+            logger.info("APScheduler stopped")
+        except Exception as e:
+            logger.error("Error stopping scheduler: {}", e)
+    _scheduler = None
 
 
 def get_scheduled_jobs() -> list[dict[str, Any]]:

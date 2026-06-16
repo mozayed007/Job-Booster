@@ -1,6 +1,6 @@
 """FastAPI router for application tracking."""
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from loguru import logger
 from pydantic import BaseModel, Field
 
@@ -40,7 +40,7 @@ async def track_application(request: TrackApplicationRequest):
         raise
     except Exception as e:
         logger.error(f"Track application error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
     finally:
         db.close()
 
@@ -49,8 +49,8 @@ async def track_application(request: TrackApplicationRequest):
 async def list_applications(
     user_id: int | None = None,
     status: str | None = None,
-    limit: int = 100,
-    offset: int = 0,
+    limit: int = Query(100, ge=1, le=500),
+    offset: int = Query(0, ge=0),
 ):
     """List applications with optional status filter."""
     db = get_db_session()
@@ -60,7 +60,7 @@ async def list_applications(
         return {"success": True, "count": len(apps), "applications": apps}
     except Exception as e:
         logger.error(f"List applications error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
     finally:
         db.close()
 
@@ -87,7 +87,7 @@ async def update_application(app_id: int, request: UpdateStatusRequest):
         raise
     except Exception as e:
         logger.error(f"Update application error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
     finally:
         db.close()
 
@@ -106,7 +106,7 @@ async def delete_application(app_id: int):
         raise
     except Exception as e:
         logger.error(f"Delete application error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
     finally:
         db.close()
 
@@ -121,6 +121,6 @@ async def application_stats(user_id: int | None = None):
         return {"success": True, "stats": stats}
     except Exception as e:
         logger.error(f"Application stats error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
     finally:
         db.close()

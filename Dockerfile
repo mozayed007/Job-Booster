@@ -28,7 +28,14 @@ COPY --from=builder /build/scripts/ ./scripts/
 COPY --from=builder /build/data/ ./data/
 COPY --from=builder /build/pyproject.toml ./
 
-RUN mkdir -p outputs
+RUN groupadd -r appuser && useradd -r -g appuser -d /app appuser \
+    && mkdir -p outputs \
+    && chown -R appuser:appuser /app outputs
+
+USER appuser
+
+ENV HOST=0.0.0.0
+ENV GRADIO_SERVER_NAME=0.0.0.0
 
 EXPOSE 8000 8050
 

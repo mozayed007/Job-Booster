@@ -40,7 +40,6 @@ dependencies = [
     "python-dotenv>=1.0.0",
     "loguru>=0.7.0",
     "fpdf2>=2.8.0",
-    "nest-asyncio>=1.6.0",
     "pyyaml>=6.0.0",
     "apscheduler>=3.10.0",
     
@@ -66,6 +65,11 @@ dev = [
     "pytest-asyncio>=0.23.0",
     "ruff>=0.3.0",
     "mypy>=1.8.0",
+    "types-PyYAML>=6.0.0",
+    "types-python-jose>=3.3.0",
+    "types-Markdown>=3.5.0",
+    "types-openpyxl>=3.1.0",
+    "types-APScheduler>=3.10.0",
 ]
 
 [build-system]
@@ -88,6 +92,25 @@ target-version = "py310"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP"]
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_ignores = true
+no_implicit_optional = true
+check_untyped_defs = true
+
+[[tool.mypy.overrides]]
+module = [
+    "tinyfish.*",
+    "crawl4ai.*",
+    "glmocr.*",
+    "gradio.*",
+    "liteparse.*",
+    "apscheduler.*",
+    "pydantic_graph.*",
+]
+ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

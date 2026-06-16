@@ -21,6 +21,7 @@ from loguru import logger
 from pydantic import BaseModel, Field
 
 from app.core.config import settings
+from app.core.upload_validation import RESUME_EXTENSIONS, validate_upload, validate_upload_size
 from app.middleware.auth_middleware import get_current_user_dependency
 from app.models.db_models import User
 from app.pipelines.engine import load_pipeline_configs, run_pipeline
@@ -31,14 +32,16 @@ from app.services.db_service import DatabaseService, get_db_session
 router = APIRouter(prefix="/pipeline", tags=["Pipeline"])
 
 # Pipelines that may exceed HTTP timeouts when run synchronously
-_BACKGROUND_PIPELINE_KEYS = frozenset({
-    "full_application",
-    "resume_only",
-    "job_search_only",
-    "cover_letter_only",
-    "outreach",
-    "interview_prep",
-})
+_BACKGROUND_PIPELINE_KEYS = frozenset(
+    {
+        "full_application",
+        "resume_only",
+        "job_search_only",
+        "cover_letter_only",
+        "outreach",
+        "interview_prep",
+    }
+)
 
 _background_jobs: dict[str, dict[str, Any]] = {}
 
@@ -119,16 +122,14 @@ class PipelineResult(BaseModel):
 def _serialize_artifact(value: Any) -> Any:
     if hasattr(value, "model_dump"):
         return value.model_dump()
-    if is_dataclass(value):
+    if is_dataclass(value) and not isinstance(value, type):
         return asdict(value)
     return value
 
 
 def serialize_pipeline_state(state: PipelineState) -> dict[str, Any]:
     """Convert PipelineState to a JSON-serializable dict."""
-    artifacts = {
-        key: _serialize_artifact(val) for key, val in state.artifacts.items()
-    }
+    artifacts = {key: _serialize_artifact(val) for key, val in state.artifacts.items()}
     return {
         "pipeline_name": state.pipeline_name,
         "artifacts": artifacts,
@@ -231,7 +232,7 @@ async def pipeline_run(
                     {
                         "status": "failed",
                         "pipeline_key": request.pipeline_key,
-                        "error": str(e),
+                        "error": "Background pipeline failed",
                     },
                 )
 
@@ -263,9 +264,7 @@ async def pipeline_apply(request: PipelineApplyRequest):
     try:
         svc = ApplyService(DatabaseService(db))
 
-        resume_text, resume_id, resume_record = await svc.resolve_resume_text(
-            request.resume_id
-        )
+        resume_text, resume_id, resume_record = await svc.resolve_resume_text(request.resume_id)
 
         job_text, job_id, company_name = await svc.resolve_job_text(
             request.job_text or "",
@@ -293,7 +292,7 @@ async def pipeline_apply(request: PipelineApplyRequest):
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
         logger.error(f"Pipeline apply error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
     finally:
         db.close()
 
@@ -311,7 +310,9 @@ async def pipeline_apply_file(
 
     Parses the resume, stores it, indexes it, then runs the full pipeline.
     """
+    validate_upload(file, allowed_extensions=RESUME_EXTENSIONS)
     content = await file.read()
+    validate_upload_size(content)
     if not content:
         raise HTTPException(status_code=400, detail="Empty file")
 
@@ -336,6 +337,6 @@ async def pipeline_apply_file(
 
     except Exception as e:
         logger.error(f"Pipeline apply file error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
     finally:
         db.close()

@@ -8,14 +8,16 @@ from app.core.config import settings
 from app.ui.api_client import pipeline_list, pipeline_run, pipeline_run_status
 from app.ui.helpers import run_async
 
-_TEXT_PIPELINES = frozenset({
-    "full_application",
-    "resume_only",
-    "job_search_only",
-    "cover_letter_only",
-    "outreach",
-    "interview_prep",
-})
+_TEXT_PIPELINES = frozenset(
+    {
+        "full_application",
+        "resume_only",
+        "job_search_only",
+        "cover_letter_only",
+        "outreach",
+        "interview_prep",
+    }
+)
 _SYNC_PIPELINES = frozenset({"discovery_sync_only", "daily_scanner"})
 
 

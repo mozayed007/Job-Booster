@@ -85,11 +85,13 @@ def get_manifest_tools() -> list[dict[str, Any]]:
     """MCP tools/list payload (without internal keys)."""
     tools = []
     for spec in get_tool_definitions().values():
-        tools.append({
-            "name": spec["name"],
-            "description": spec.get("description", ""),
-            "inputSchema": spec.get("inputSchema", {}),
-        })
+        tools.append(
+            {
+                "name": spec["name"],
+                "description": spec.get("description", ""),
+                "inputSchema": spec.get("inputSchema", {}),
+            }
+        )
     return tools
 
 

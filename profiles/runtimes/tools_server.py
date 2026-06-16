@@ -11,11 +11,71 @@ Usage:
 from __future__ import annotations
 
 import asyncio
+import ipaddress
 import os
+import socket
 import sys
 from typing import Any
+from urllib.parse import urlparse
 
 import httpx
+
+# ──────────────────────────────────────────────
+# Security helpers
+# ──────────────────────────────────────────────
+
+
+def _is_private_or_loopback(host: str) -> bool:
+    """Return True if ``host`` resolves to a private/loopback/link-local IP.
+
+    Used to block SSRF attempts that target internal services or cloud
+    metadata endpoints (e.g. ``http://169.254.169.254/...``).
+    """
+    try:
+        infos = socket.getaddrinfo(host, None)
+    except socket.gaierror:
+        # Unresolvable — let the upstream call fail naturally rather than
+        # treat it as blocked.
+        return False
+    for info in infos:
+        addr = info[4][0]
+        try:
+            ip = ipaddress.ip_address(addr)
+        except ValueError:
+            continue
+        if (
+            ip.is_private
+            or ip.is_loopback
+            or ip.is_link_local
+            or ip.is_reserved
+            or ip.is_multicast
+            or ip.is_unspecified
+        ):
+            return True
+    return False
+
+
+class SSRFBlockedError(ValueError):
+    """Raised when a requested URL targets a forbidden (internal) host."""
+
+
+def assert_url_safe(url: str) -> None:
+    """Validate that ``url`` is safe to fetch server-side.
+
+    Rejects non-http(s) schemes and any host that resolves to a private,
+    loopback, link-local, or otherwise internal address. This prevents the
+    server from being used as an SSRF proxy to reach cloud metadata
+    endpoints or internal services.
+    """
+    parsed = urlparse(url)
+    if parsed.scheme not in {"http", "https"}:
+        raise SSRFBlockedError(f"Unsupported URL scheme: {parsed.scheme!r}")
+    host = parsed.hostname or ""
+    if not host:
+        raise SSRFBlockedError("URL is missing a host")
+    if _is_private_or_loopback(host):
+        raise SSRFBlockedError(f"Refusing to fetch internal/private host: {host}")
+
 
 # ──────────────────────────────────────────────
 # Tool implementations
@@ -111,6 +171,10 @@ async def _ddg_search(query: str, max_results: int) -> dict[str, Any]:
 
 async def web_fetch_impl(url: str) -> dict[str, Any]:
     """Fetch and extract content from a URL."""
+    # Block SSRF attempts (private IPs, loopback, cloud metadata endpoints,
+    # non-http schemes) before making any outbound request.
+    assert_url_safe(url)
+
     # Try TinyFish first
     api_key = os.getenv("TINYFISH_API_KEY")
     if api_key:
@@ -127,12 +191,23 @@ async def web_fetch_impl(url: str) -> dict[str, Any]:
                     "text": r.text or "",
                     "format": "markdown",
                 }
+        except SSRFBlockedError:
+            raise
         except Exception:
             pass
 
-    # Fallback: basic HTTP fetch
-    async with httpx.AsyncClient(follow_redirects=True) as client:
+    # Fallback: basic HTTP fetch — do NOT follow cross-host redirects, which
+    # could be used to bypass the SSRF check above.
+    parsed = urlparse(url)
+    async with httpx.AsyncClient(follow_redirects=False) as client:
         resp = await client.get(url, headers={"User-Agent": "Mozilla/5.0"})
+        # Only follow redirects that stay on the same safe host.
+        if resp.is_redirect:
+            loc = resp.headers.get("location", "")
+            loc_parsed = urlparse(loc)
+            redirect_url = loc if loc_parsed.netloc else f"{parsed.scheme}://{parsed.netloc}{loc}"
+            assert_url_safe(redirect_url)
+            resp = await client.get(redirect_url, headers={"User-Agent": "Mozilla/5.0"})
         return {
             "title": "",
             "description": "",
@@ -146,8 +221,13 @@ async def web_fetch_impl(url: str) -> dict[str, Any]:
 # ──────────────────────────────────────────────
 
 
-async def run_server(host: str = "0.0.0.0", port: int = 8052) -> None:
-    """Run the tools server."""
+async def run_server(host: str = "127.0.0.1", port: int = 8052) -> None:
+    """Run the tools server.
+
+    Binds to ``127.0.0.1`` by default so the SSRF-capable ``web-fetch``
+    endpoint is not exposed to the network. Pass ``--host 0.0.0.0`` only on a
+    trusted network and behind an authenticating reverse proxy.
+    """
     try:
         from aiohttp import web
     except ImportError:
@@ -164,7 +244,10 @@ async def run_server(host: str = "0.0.0.0", port: int = 8052) -> None:
 
     async def handle_fetch(request: web.Request) -> web.Response:
         body = await request.json()
-        result = await web_fetch_impl(url=body.get("url", ""))
+        try:
+            result = await web_fetch_impl(url=body.get("url", ""))
+        except SSRFBlockedError as e:
+            return web.json_response({"error": str(e)}, status=400)
         return web.json_response(result)
 
     async def handle_health(request: web.Request) -> web.Response:
@@ -189,7 +272,13 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="REST Tools Server")
     parser.add_argument("--port", type=int, default=8052)
-    parser.add_argument("--host", type=str, default="0.0.0.0")
+    parser.add_argument(
+        "--host",
+        type=str,
+        default="127.0.0.1",
+        help="Bind address (default 127.0.0.1). The web-fetch endpoint can be "
+        "used for SSRF, so do not bind to 0.0.0.0 without an authenticating proxy.",
+    )
     args = parser.parse_args()
 
     asyncio.run(run_server(host=args.host, port=args.port))

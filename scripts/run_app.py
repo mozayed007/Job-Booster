@@ -52,6 +52,14 @@ def check_dependencies():
 # Get the root directory
 root_dir = Path(__file__).parent.parent.absolute()
 
+_host = os.getenv("HOST", "127.0.0.1")
+_port = os.getenv("PORT", "8000")
+_reload = os.getenv("DEBUG", "").lower() in {"1", "true", "yes"}
+_gradio_host = os.getenv("GRADIO_SERVER_NAME", "127.0.0.1")
+_gradio_port = os.getenv("GRADIO_SERVER_PORT", "8050")
+
+_reload_flag = ["--reload"] if _reload else []
+
 # Server configurations
 servers = [
     {
@@ -62,10 +70,10 @@ servers = [
             "uvicorn",
             "app.main:app",
             "--host",
-            "0.0.0.0",
+            _host,
             "--port",
-            "8000",
-            "--reload",
+            _port,
+            *_reload_flag,
         ],
         "cwd": str(root_dir),
         "env": os.environ.copy(),
@@ -77,7 +85,10 @@ servers = [
         "command": [
             sys.executable,
             "-c",
-            "from app.frontend import app; app.launch(server_name='0.0.0.0', server_port=8050)",
+            (
+                "from app.frontend import app; "
+                f"app.launch(server_name='{_gradio_host}', server_port={_gradio_port})"
+            ),
         ],
         "cwd": str(root_dir),
         "env": os.environ.copy(),

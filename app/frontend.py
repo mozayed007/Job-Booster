@@ -1,5 +1,7 @@
 """Gradio UI shell for Job_Booster."""
 
+import os
+
 import gradio as gr
 from loguru import logger
 
@@ -156,9 +158,7 @@ with gr.Blocks(title="Job Booster") as app:
 
     with gr.Row():
         api_status = gr.JSON(label="API status", scale=1)
-        gr.Button("Check API", size="sm", scale=0).click(
-            fn=api_status_ui, outputs=[api_status]
-        )
+        gr.Button("Check API", size="sm", scale=0).click(fn=api_status_ui, outputs=[api_status])
 
     with gr.Tabs():
         with gr.Tab("Overview"):
@@ -194,6 +194,7 @@ with gr.Blocks(title="Job Booster") as app:
                     apply_cover = gr.Textbox(label="Cover letter", lines=14)
                     apply_analysis = gr.JSON(label="Match analysis")
                     apply_gaps = gr.JSON(label="Skill gaps")
+
             def paste_job_from_discovery(text):
                 return text or ""
 
@@ -325,7 +326,7 @@ with gr.Blocks(title="Job Booster") as app:
 
 if __name__ == "__main__":
     app.launch(
-        server_name="0.0.0.0",
-        server_port=8050,
+        server_name=os.getenv("GRADIO_SERVER_NAME", "127.0.0.1"),
+        server_port=int(os.getenv("GRADIO_SERVER_PORT", "8050")),
         theme=gr.themes.Soft(primary_hue="slate"),
     )

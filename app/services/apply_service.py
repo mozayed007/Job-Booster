@@ -224,7 +224,7 @@ class ApplyService:
         parsed_job = await job_parser.parse_job_text(job_text)
 
         all_job_skills = {
-            s.lower() for s in parsed_job.required_skills | parsed_job.preferred_skills
+            s.lower() for s in parsed_job.required_skills + parsed_job.preferred_skills
         }
         skill_matches, matched, unmatched, suggestions, overall_score = _run_skill_analysis(
             resume_skills, all_job_skills
@@ -350,6 +350,9 @@ class ApplyService:
 
         if resume_id:
             await _auto_index_resume(resume_id, resume_text)
+
+        if resume_id is None:
+            return {"success": False, "message": "Failed to store resume"}
 
         return await self.run(
             resume_id=resume_id,

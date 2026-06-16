@@ -3,8 +3,9 @@
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from loguru import logger
 
 from app.api.analytics_routes import router as analytics_router
@@ -56,19 +57,52 @@ async def lifespan(app: FastAPI):
 
 logging.basicConfig(level=logging.INFO)
 
+# CORS: ``allow_credentials=True`` combined with a wildcard origin is an
+# invalid + insecure configuration (browsers reject it, and the intent to
+# allow any origin with credentials is a credential-theft vector). When the
+# operator has not supplied an explicit allow-list we disable credentials.
+_cors_raw = settings.CORS_ORIGINS.strip()
+_cors_is_wildcard = _cors_raw == "*" or _cors_raw == ""
+if _cors_is_wildcard:
+    _cors_origins = ["*"]
+else:
+    _cors_origins = [o.strip() for o in _cors_raw.split(",") if o.strip()]
+
 app = FastAPI(
     title="Job_Booster API",
     description="AI-powered startup job scanner and resume tailoring platform",
     version="0.2.0",
-    docs_url="/docs",
-    redoc_url="/redoc",
+    # Only expose interactive API docs in debug/development.
+    docs_url="/docs" if settings.DEBUG else None,
+    redoc_url="/redoc" if settings.DEBUG else None,
     lifespan=lifespan,
 )
 
+
+@app.exception_handler(HTTPException)
+async def _http_exception_handler(request: Request, exc: HTTPException) -> JSONResponse:
+    """Preserve client-safe 4xx detail; sanitize 5xx detail."""
+    if exc.status_code < status.HTTP_500_INTERNAL_SERVER_ERROR:
+        detail = exc.detail
+    else:
+        detail = "Internal server error"
+    return JSONResponse(status_code=exc.status_code, content={"detail": detail})
+
+
+@app.exception_handler(Exception)
+async def _generic_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    """Catch-all: never leak internal exception text to clients."""
+    logger.exception("Unhandled exception in {}", request.url.path)
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content={"detail": "Internal server error"},
+    )
+
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS.split(",") if settings.CORS_ORIGINS != "*" else ["*"],
-    allow_credentials=True,
+    allow_origins=_cors_origins,
+    allow_credentials=not _cors_is_wildcard,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -129,7 +163,7 @@ if __name__ == "__main__":
 
     uvicorn.run(
         "app.main:app",
-        host=getattr(settings, "HOST", "0.0.0.0"),
+        host=getattr(settings, "HOST", "127.0.0.1"),
         port=getattr(settings, "PORT", 8000),
-        reload=getattr(settings, "DEBUG", True),
+        reload=settings.DEBUG,
     )

@@ -6,6 +6,7 @@ Handles text extraction (PDF, DOCX, MD, TXT, LaTeX) and LLM-based structured par
 import io
 import re
 from pathlib import Path
+from typing import Any, cast
 
 import docx
 from loguru import logger
@@ -16,6 +17,7 @@ from app.models.resume_model import Resume
 # Resolve prompt directory relative to this file
 _PROMPTS_DIR = Path(__file__).parent.parent / "prompts"
 
+_liteparse_parser: Any = None
 try:
     from liteparse import LiteParse
 
@@ -23,7 +25,6 @@ try:
     LITEPARSE_AVAILABLE = True
 except Exception:
     LITEPARSE_AVAILABLE = False
-    _liteparse_parser = None
 
 try:
     from glmocr import parse as glmocr_parse
@@ -75,6 +76,7 @@ def _glmocr_extract(file_content: bytes) -> str:
         logger.warning("GLM-OCR not available, falling back to raw decode")
         return file_content.decode("utf-8", errors="replace")
 
+    tmp_path: str | None = None
     try:
         import tempfile
 
@@ -82,13 +84,15 @@ def _glmocr_extract(file_content: bytes) -> str:
             tmp.write(file_content)
             tmp_path = tmp.name
         result = glmocr_parse(tmp_path)
-        Path(tmp_path).unlink(missing_ok=True)
         if result and hasattr(result, "text") and result.text:
-            return result.text.strip()
+            return str(result.text).strip()
         return ""
     except Exception as e:
         logger.error(f"GLM-OCR extraction failed: {e}")
         return ""
+    finally:
+        if tmp_path:
+            Path(tmp_path).unlink(missing_ok=True)
 
 
 def extract_text_from_docx(file_content: bytes) -> str:
@@ -101,7 +105,7 @@ def extract_text_from_docx(file_content: bytes) -> str:
         try:
             result = _liteparse_parser.parse(file_content)
             if result and result.text and result.text.strip():
-                return result.text.strip()
+                return str(result.text).strip()
         except Exception as e:
             logger.debug(f"LiteParse DOCX extraction failed, falling back: {e}")
 
@@ -180,7 +184,7 @@ class ParserLLM:
                 system_prompt=system_prompt,
             )
             result = await agent.run(f"Parse this resume:\n\n{text[:8000]}")
-            return result.output
+            return cast(Resume, result.output)
         except Exception as e:
             logger.error(f"Resume parsing failed: {e}")
             return Resume(summary=f"Parsing failed: {e}", raw_text=text[:2000])
@@ -202,7 +206,7 @@ class ParserLLM:
                 system_prompt=system_prompt,
             )
             result = await agent.run(f"Parse this job description:\n\n{text[:8000]}")
-            return result.output
+            return cast(JobPosting, result.output)
         except Exception as e:
             logger.error(f"Job parsing failed: {e}")
             return JobPosting(title=f"Parsing failed: {e}", description=text[:1000])

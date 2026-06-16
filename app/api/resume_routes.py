@@ -6,6 +6,7 @@ from loguru import logger
 
 from app.agents.cover_letter import generate_cover_letter
 from app.agents.resume_tailor import tailor_resume
+from app.core.upload_validation import RESUME_EXTENSIONS, validate_upload, validate_upload_size
 from app.models.api_models import (
     AnalysisData,
     AnalysisResponse,
@@ -34,16 +35,23 @@ from app.services.vector_store import get_vector_store
 router = APIRouter(tags=["Resume & Job"])
 
 
+def _upload_filename(file: UploadFile) -> str:
+    return file.filename or "upload"
+
+
 @router.post("/parse/resume", response_model=ResumeParseResponse)
 async def parse_resume(file: UploadFile = File(...)):
     """Upload resume file → extract text → LLM parse → store → return structured data."""
     try:
+        validate_upload(file, allowed_extensions=RESUME_EXTENSIONS)
         content = await file.read()
+        validate_upload_size(content)
         if not content:
             return ResumeParseResponse(success=False, message="Empty file uploaded")
 
         parser = ResumeParser()
-        resume = await parser.parse_resume_file_content(content, file.filename)
+        filename = _upload_filename(file)
+        resume = await parser.parse_resume_file_content(content, filename)
 
         # Store in DB
         db = get_db_session()
@@ -51,14 +59,12 @@ async def parse_resume(file: UploadFile = File(...)):
             service = DatabaseService(db)
             resume_id = service.store_resume(
                 ResumeCreateData(
-                    filename=file.filename,
+                    filename=filename,
                     parsed_data=resume.model_dump(mode="json"),
                     raw_text=resume.raw_text,
-                    version_name=file.filename,
-                    file_path=file.filename,
-                    file_format=file.filename.rsplit(".", 1)[-1]
-                    if "." in file.filename
-                    else "unknown",
+                    version_name=filename,
+                    file_path=filename,
+                    file_format=filename.rsplit(".", 1)[-1] if "." in filename else "unknown",
                 )
             )
         finally:
@@ -83,7 +89,7 @@ async def parse_resume(file: UploadFile = File(...)):
         )
     except Exception as e:
         logger.error(f"Resume parsing error: {e}")
-        return ResumeParseResponse(success=False, message=str(e))
+        return ResumeParseResponse(success=False, message="Processing failed")
 
 
 @router.post("/parse/job", response_model=JobParseResponse)
@@ -128,7 +134,7 @@ async def parse_job(request: JobTextRequest):
         )
     except Exception as e:
         logger.error(f"Job parsing error: {e}")
-        return JobParseResponse(success=False, message=str(e))
+        return JobParseResponse(success=False, message="Processing failed")
 
 
 @router.post("/analyze", response_model=AnalysisResponse)
@@ -138,12 +144,14 @@ async def analyze_match(
 ):
     """Resume file + job text → parse both → run analysis → return match data."""
     try:
+        validate_upload(file, allowed_extensions=RESUME_EXTENSIONS)
         content = await file.read()
+        validate_upload_size(content)
         if not content:
             return AnalysisResponse(success=False, message="Empty file")
 
         resume_parser = ResumeParser()
-        resume = await resume_parser.parse_resume_file_content(content, file.filename)
+        resume = await resume_parser.parse_resume_file_content(content, _upload_filename(file))
 
         job_parser = JobParser()
         job = await job_parser.parse_job_text(job_text)
@@ -197,7 +205,7 @@ async def analyze_match(
         )
     except Exception as e:
         logger.error(f"Analysis error: {e}")
-        return AnalysisResponse(success=False, message=str(e))
+        return AnalysisResponse(success=False, message="Processing failed")
 
 
 @router.post("/tailor", response_model=TailoredResumeResponse)
@@ -208,12 +216,14 @@ async def tailor_resume_endpoint(
 ):
     """Resume file + job text + format → run tailor → return tailored resume."""
     try:
+        validate_upload(file, allowed_extensions=RESUME_EXTENSIONS)
         content = await file.read()
+        validate_upload_size(content)
         if not content:
             return TailoredResumeResponse(success=False, message="Empty file")
 
         # Extract resume text
-        resume_text = extract_text(content, file.filename)
+        resume_text = extract_text(content, _upload_filename(file))
         if not resume_text.strip():
             return TailoredResumeResponse(success=False, message="Could not extract text from file")
 
@@ -231,7 +241,7 @@ async def tailor_resume_endpoint(
         )
     except Exception as e:
         logger.error(f"Tailoring error: {e}")
-        return TailoredResumeResponse(success=False, message=str(e))
+        return TailoredResumeResponse(success=False, message="Processing failed")
 
 
 @router.post("/cover-letter", response_model=CoverLetterResponse)
@@ -243,11 +253,13 @@ async def generate_cover_letter_endpoint(
 ):
     """Resume file + job text → generate cover letter → store → return."""
     try:
+        validate_upload(file, allowed_extensions=RESUME_EXTENSIONS)
         content = await file.read()
+        validate_upload_size(content)
         if not content:
             return CoverLetterResponse(success=False, message="Empty file")
 
-        resume_text = extract_text(content, file.filename)
+        resume_text = extract_text(content, _upload_filename(file))
         if not resume_text.strip():
             return CoverLetterResponse(success=False, message="Could not extract text from file")
 
@@ -278,7 +290,7 @@ async def generate_cover_letter_endpoint(
         )
     except Exception as e:
         logger.error(f"Cover letter generation error: {e}")
-        return CoverLetterResponse(success=False, message=str(e))
+        return CoverLetterResponse(success=False, message="Processing failed")
 
 
 @router.post("/tailor-to-template")
@@ -289,12 +301,14 @@ async def tailor_to_template(
 ):
     """Tailor resume → render into template → save + return .tex file."""
     try:
+        validate_upload(file, allowed_extensions=RESUME_EXTENSIONS)
         content = await file.read()
+        validate_upload_size(content)
         if not content:
             return Response(content="Empty file", status_code=400)
 
         # Parse resume into structured model
-        resume_text = extract_text(content, file.filename)
+        resume_text = extract_text(content, _upload_filename(file))
         if not resume_text.strip():
             return Response(content="Could not extract text", status_code=400)
 

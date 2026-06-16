@@ -103,7 +103,7 @@ async def update_profile(
     except Exception as e:
         db.rollback()
         logger.error(f"Profile update error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
     finally:
         db.close()
 

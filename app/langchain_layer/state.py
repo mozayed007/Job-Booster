@@ -40,5 +40,6 @@ class LCGraphState:
         ]:
             artifact = self.artifacts.get(key)
             if artifact and getattr(artifact, attr, None):
-                return getattr(artifact, attr)
+                value = getattr(artifact, attr)
+                return str(value)
         return self.cv_text or self.resume_text

@@ -31,22 +31,26 @@ def _jobs_to_rows(jobs: list) -> tuple[list[list], list[dict]]:
         title = j.get("title", "")
         company = j.get("company", "")
         snippet = (j.get("snippet") or j.get("raw_text") or "")[:2000]
-        rows.append([
-            title,
-            company,
-            j.get("location", ""),
-            f"{j.get('fit_score', j.get('score', 0)):.2f}"
-            if isinstance(j.get("fit_score", j.get("score", 0)), (int, float))
-            else str(j.get("fit_score", "")),
-            url[:80],
-        ])
-        options.append({
-            "label": f"{title} @ {company}",
-            "title": title,
-            "company": company,
-            "url": url,
-            "snippet": snippet,
-        })
+        rows.append(
+            [
+                title,
+                company,
+                j.get("location", ""),
+                f"{j.get('fit_score', j.get('score', 0)):.2f}"
+                if isinstance(j.get("fit_score", j.get("score", 0)), (int, float))
+                else str(j.get("fit_score", "")),
+                url[:80],
+            ]
+        )
+        options.append(
+            {
+                "label": f"{title} @ {company}",
+                "title": title,
+                "company": company,
+                "url": url,
+                "snippet": snippet,
+            }
+        )
     return rows, options
 
 

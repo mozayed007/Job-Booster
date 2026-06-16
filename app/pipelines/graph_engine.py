@@ -8,10 +8,10 @@ stack" counterpart to the plain async engine and the LangGraph layer.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, ClassVar
+from typing import ClassVar
 
 from loguru import logger
-from pydantic_graph import BaseNode, End, GraphBuilder, GraphRunContext
+from pydantic_graph import BaseNode, End, Graph, GraphRunContext, GraphRunResult
 
 from app.agents.base_agent import BaseAgent, load_agents
 from app.pipelines.engine import get_pipeline_config
@@ -81,7 +81,7 @@ class AgentNode(BaseNode[PipelineState, None, PipelineState]):
 
 def build_pydantic_graph(
     pipeline_key: str,
-) -> tuple[Any, AgentNode]:
+) -> tuple[Graph[PipelineState, None, PipelineState], AgentNode]:
     """Build a pydantic-graph ``Graph`` from a pipeline config.
 
     Args:
@@ -113,14 +113,13 @@ def build_pydantic_graph(
     run.__annotations__["return"] = node_class | End[PipelineState]
     node_class.run = run  # type: ignore[attr-defined]
 
-    g = GraphBuilder(
+    graph = Graph(
+        nodes=[node_class],
         state_type=PipelineState,
-        output_type=PipelineState,
+        run_end_type=PipelineState,
+        name=pipeline_key,
     )
-
-    g.add(g.node(node_class))
-    g.add(g.edge_from(g.start_node).to(node_class))
-    return g.build(), node_class()
+    return graph, node_class()
 
 
 class PydanticGraphPipelineEngine:
@@ -171,19 +170,30 @@ class PydanticGraphPipelineEngine:
         graph, start_node = build_pydantic_graph(pipeline_key)
 
         try:
-            result = await graph.run(
-                inputs=start_node,
-                state=initial_state,
-            )
-            if isinstance(result, PipelineState):
-                return result
-            if isinstance(result, End):
-                return result.data if isinstance(result.data, PipelineState) else initial_state
-            return initial_state
+            run_result = await graph.run(start_node, state=initial_state)
+            return _extract_pipeline_state(run_result, initial_state)
         except Exception as exc:
             logger.error(f"pydantic-graph pipeline '{pipeline_key}' failed: {exc}")
             initial_state.errors.append(f"Pipeline execution failed: {exc}")
             return initial_state
+
+
+def _extract_pipeline_state(
+    run_result: GraphRunResult[PipelineState, PipelineState],
+    fallback: PipelineState,
+) -> PipelineState:
+    """Normalize pydantic-graph run results to PipelineState."""
+    output = run_result.output
+    if isinstance(output, PipelineState):
+        return output
+    if isinstance(output, End):
+        data = output.data
+        if isinstance(data, PipelineState):
+            return data
+    state = run_result.state
+    if isinstance(state, PipelineState):
+        return state
+    return fallback
 
 
 _engine: PydanticGraphPipelineEngine | None = None

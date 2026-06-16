@@ -21,6 +21,7 @@ class EmbeddingService:
     """
 
     _instance: Optional["EmbeddingService"] = None
+    _initialized: bool = False
 
     def __new__(cls) -> "EmbeddingService":
         if cls._instance is None:
@@ -58,7 +59,8 @@ class EmbeddingService:
             import litellm
 
             response = await litellm.aembedding(model=self._model, input=[text])
-            return response.data[0]["embedding"]
+            embedding: list[float] = response.data[0]["embedding"]
+            return embedding
         except Exception as e:
             logger.warning(f"LiteLLM embedding failed, using hash fallback: {e}")
             self._use_fallback = True

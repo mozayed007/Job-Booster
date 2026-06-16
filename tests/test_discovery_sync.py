@@ -30,6 +30,7 @@ class TestDiscoverySyncAgent:
             "app.agents.discovery_sync.import_changed_files_in_dir",
             fake_import,
         )
+
         async def fake_remote(*args, **kwargs):
             from app.services.bigset_remote_service import RemoteDatasetResult
 
