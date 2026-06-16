@@ -66,6 +66,10 @@ docs/_build/
 htmlcov/
 .ruff_cache/
 
+# Mypy
+.mypy_cache/
+mypy_errors.txt
+
 # Local development files
 local_settings.py
 Hackathon_MVP_Plan.md
