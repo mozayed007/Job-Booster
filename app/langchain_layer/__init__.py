@@ -16,6 +16,7 @@ from app.langchain_layer.agents import (
 from app.langchain_layer.factory import build_llm, get_model_name
 from app.langchain_layer.graph import LangGraphPipeline, build_pipeline_graph, run_pipeline
 from app.langchain_layer.state import LCGraphState
+from app.langchain_layer.tools import get_lc_tools, get_lc_tools_for_agent
 
 __all__ = [
     "LangChainAgent",
@@ -30,4 +31,6 @@ __all__ = [
     "build_pipeline_graph",
     "LangGraphPipeline",
     "run_pipeline",
+    "get_lc_tools",
+    "get_lc_tools_for_agent",
 ]

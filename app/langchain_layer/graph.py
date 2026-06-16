@@ -13,6 +13,7 @@ from loguru import logger
 from app.langchain_layer.agents import AGENT_REGISTRY, LangChainAgent, build_agent
 from app.langchain_layer.factory import build_llm
 from app.langchain_layer.state import LCGraphState
+from app.langchain_layer.tools import get_lc_tools_for_agent
 
 PipelineStepFn = Callable[[LCGraphState], Awaitable[LCGraphState]]
 
@@ -121,7 +122,8 @@ def build_pipeline_graph(
 
     previous_node: str | None = None
     for step in config.steps:
-        agent = build_agent(step.agent_key, model=shared_model)
+        agent_tools = get_lc_tools_for_agent(step.agent_key)
+        agent = build_agent(step.agent_key, model=shared_model, tools=agent_tools)
         if agent is None:
             logger.warning(f"Skipping unknown agent '{step.agent_key}' in pipeline")
             continue
@@ -196,7 +198,11 @@ class LangGraphPipeline:
         )
 
         try:
-            final_state = await graph.ainvoke(initial_state)
+            from app.core.langfuse_setup import get_langfuse_handler
+
+            handler = get_langfuse_handler()
+            lc_config = {"callbacks": [handler]} if handler else None
+            final_state = await graph.ainvoke(initial_state, config=lc_config)
             # LangGraph may return a plain dict even when the schema is a dataclass.
             if isinstance(final_state, dict):
                 return LCGraphState(**final_state)

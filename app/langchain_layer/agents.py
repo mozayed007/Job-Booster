@@ -34,11 +34,13 @@ class LangChainAgent:
         system_prompt: str,
         output_type: type[BaseModel] | None = None,
         model: ChatLiteLLM | None = None,
+        tools: list | None = None,
     ) -> None:
         self.system_prompt = system_prompt
         self._output_type = output_type or self.__class__.output_type
         self.model = model or build_llm()
-        self._chain = self.model.with_structured_output(self._output_type)
+        bound_model = self.model.bind_tools(tools) if tools else self.model
+        self._chain = bound_model.with_structured_output(self._output_type)  # type: ignore[attr-defined]
 
     @property
     def is_ready(self) -> bool:
@@ -265,12 +267,15 @@ AGENT_REGISTRY: dict[str, type[LangChainAgent]] = {
 }
 
 
-def build_agent(agent_key: str, model: ChatLiteLLM | None = None) -> LangChainAgent | None:
+def build_agent(
+    agent_key: str, model: ChatLiteLLM | None = None, tools: list | None = None
+) -> LangChainAgent | None:
     """Factory to build a concrete LangChain agent by key.
 
     Args:
         agent_key: Key matching a Pydantic AI agent name.
         model: Optional pre-built chat model.
+        tools: Optional list of LangChain tools to bind.
 
     Returns:
         A ``LangChainAgent`` subclass instance, or None if the key is unknown.
@@ -282,4 +287,5 @@ def build_agent(agent_key: str, model: ChatLiteLLM | None = None) -> LangChainAg
     return agent_cls(
         system_prompt=f"You are the {agent_cls.__name__} for a job-search assistant.",
         model=model,
+        tools=tools,
     )

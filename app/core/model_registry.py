@@ -297,6 +297,14 @@ class ModelRegistry:
                     litellm.failure_callback = ["logfire"]
                 except Exception:
                     pass
+
+            # Enable Langfuse OTEL callback when credentials are present.
+            try:
+                from app.core.langfuse_setup import init_langfuse
+
+                init_langfuse()
+            except Exception:
+                pass
         except ImportError:
             pass
 

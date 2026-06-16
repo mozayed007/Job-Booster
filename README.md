@@ -6,7 +6,7 @@
 [![Pydantic AI](https://img.shields.io/badge/Pydantic%20AI-0.2%2B-purple)](https://ai.pydantic.dev/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![CI](https://github.com/mozayed007/Job-Booster/actions/workflows/ci.yml/badge.svg)](https://github.com/mozayed007/Job-Booster/actions/workflows/ci.yml)
-[![Tests](https://img.shields.io/badge/tests-200%2F13%20files-brightgreen)](tests/)
+[![Tests](https://img.shields.io/badge/tests-207%2F13%20files-brightgreen)](tests/)
 [![Docker](https://img.shields.io/badge/docker-ready-blue)](Dockerfile)
 
 **Stop copy-pasting resumes.** Job Booster is an AI platform that parses, tailors, reviews, and tracks your entire job application pipeline — powered by 8 specialized AI agents that work together.

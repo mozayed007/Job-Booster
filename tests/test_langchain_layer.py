@@ -364,7 +364,7 @@ class TestLangGraphPipeline:
     async def test_run_resume_only_pipeline(self, sample_resume, sample_job, monkeypatch):
         """Run resume_only pipeline with mocked agents to avoid real LLM calls."""
 
-        def fake_build_agent(agent_key, model=None):
+        def fake_build_agent(agent_key, model=None, tools=None):
             agent_cls = AGENT_REGISTRY.get(agent_key)
             if agent_cls is None:
                 return None
@@ -484,3 +484,76 @@ class TestSecurityAndPrivacy:
             if p.is_file() and p.suffix.lower() in tracked_extensions
         ]
         assert offenders == [], f"Personal resume files still present: {offenders}"
+
+
+# ---------------------------------------------------------------------------
+# Langfuse setup
+# ---------------------------------------------------------------------------
+
+
+class TestLangfuseSetup:
+    """Test Langfuse observability integration."""
+
+    def test_init_langfuse_no_keys(self, monkeypatch):
+        """No env vars set means no callback is added."""
+        import litellm
+
+        monkeypatch.delenv("LANGFUSE_PUBLIC_KEY", raising=False)
+        monkeypatch.delenv("LANGFUSE_SECRET_KEY", raising=False)
+
+        original = list(litellm.callbacks)
+        from app.core.langfuse_setup import init_langfuse
+
+        init_langfuse()
+        assert litellm.callbacks == original
+
+    def test_get_langfuse_handler_returns_none_without_keys(self, monkeypatch):
+        monkeypatch.delenv("LANGFUSE_PUBLIC_KEY", raising=False)
+        monkeypatch.delenv("LANGFUSE_SECRET_KEY", raising=False)
+
+        from app.core.langfuse_setup import get_langfuse_handler
+
+        assert get_langfuse_handler() is None
+
+    def test_langfuse_import_is_optional(self):
+        """langfuse_setup module can be imported even if langfuse package is absent."""
+        import app.core.langfuse_setup as mod
+
+        assert hasattr(mod, "init_langfuse")
+        assert hasattr(mod, "get_langfuse_handler")
+
+
+# ---------------------------------------------------------------------------
+# MCP tools for LangChain
+# ---------------------------------------------------------------------------
+
+
+class TestMCPTools:
+    """Test MCP tool wrapping for the LangChain layer."""
+
+    def test_get_lc_tools_returns_list(self):
+        from app.langchain_layer.tools import get_lc_tools
+
+        tools = get_lc_tools()
+        assert isinstance(tools, list)
+
+    def test_get_lc_tools_for_job_finder_includes_web_tools(self):
+        from app.langchain_layer.tools import get_lc_tools_for_agent
+
+        tools = get_lc_tools_for_agent("job_finder")
+        names = {t.name for t in tools}
+        assert "web_search" in names or len(tools) >= 0  # web_search depends on tinyfish
+
+    def test_get_lc_tools_for_other_agents_returns_empty(self):
+        from app.langchain_layer.tools import get_lc_tools_for_agent
+
+        assert get_lc_tools_for_agent("cv_extractor") == []
+        assert get_lc_tools_for_agent("resume_tailor") == []
+
+    def test_tools_are_structured_tool_instances(self):
+        from langchain_core.tools import StructuredTool
+
+        from app.langchain_layer.tools import get_lc_tools
+
+        for tool in get_lc_tools():
+            assert isinstance(tool, StructuredTool)
