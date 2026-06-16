@@ -69,7 +69,6 @@ dev = [
     "types-python-jose>=3.3.0",
     "types-Markdown>=3.5.0",
     "types-openpyxl>=3.1.0",
-    "types-APScheduler>=3.10.0",
 ]
 
 [build-system]
