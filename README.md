@@ -411,7 +411,7 @@ Job_Booster/
 │   └── tools/
 ├── data/                       # Sample resumes, jobs, startups
 ├── docs/                       # Vision, Architecture, Implementation
-├── tests/                      # 116 tests, 10 files
+├── tests/                      # 192 tests, 12 files
 ├── scripts/
 │   ├── run_app.py              # Launch script
 │   └── healthcheck.sh          # Docker health check
