@@ -507,16 +507,25 @@ class ModelRegistry:
         output_type: type[BaseModel] | type | None = None,
         system_prompt: str = "",
         retries: int = 2,
+        name: str | None = None,
+        description: str | None = None,
+        metadata: dict[str, Any] | None = None,
         **kwargs,
     ):
         """Create a Pydantic AI Agent with the configured model + fallbacks.
 
-        This is THE factory every agent in the app should use.
+        This is THE factory every agent in the app should use. The ``name`` and
+        ``description`` are forwarded to ``Agent`` so that Langfuse / Logfire
+        spans emitted by pydantic-ai are attributed to the right agent instead
+        of appearing as anonymous LLM calls.
 
         Args:
             output_type: Pydantic model for structured output (or None for plain text).
             system_prompt: System prompt / instructions.
             retries: Number of retries on failure.
+            name: Agent name used for trace attribution (Langfuse/Logfire).
+            description: Human-readable agent description.
+            metadata: Extra metadata attached to the agent (forwarded to traces).
             **kwargs: Additional kwargs passed to Agent().
 
         Returns:
@@ -526,13 +535,19 @@ class ModelRegistry:
 
         model = self.get_model()
 
-        agent_kwargs = {
+        agent_kwargs: dict[str, Any] = {
             "model": model,
             "instructions": system_prompt,
             "retries": retries,
         }
         if output_type is not None:
             agent_kwargs["output_type"] = output_type
+        if name:
+            agent_kwargs["name"] = name
+        if description:
+            agent_kwargs["description"] = description
+        if metadata:
+            agent_kwargs["metadata"] = metadata
         agent_kwargs.update(kwargs)
 
         return Agent(**agent_kwargs)
@@ -621,13 +636,23 @@ def create_agent(
     output_type=None,
     system_prompt: str = "",
     retries: int = 2,
+    name: str | None = None,
+    description: str | None = None,
+    metadata: dict[str, Any] | None = None,
     **kwargs,
 ):
-    """Create a configured Pydantic AI Agent. THE factory function."""
+    """Create a configured Pydantic AI Agent. THE factory function.
+
+    Forwards ``name``/``description``/``metadata`` to the Agent so Langfuse and
+    Logfire traces are attributed to the calling agent.
+    """
     return get_registry().create_agent(
         output_type=output_type,
         system_prompt=system_prompt,
         retries=retries,
+        name=name,
+        description=description,
+        metadata=metadata,
         **kwargs,
     )
 

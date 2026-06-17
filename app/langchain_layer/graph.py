@@ -198,10 +198,9 @@ class LangGraphPipeline:
         )
 
         try:
-            from app.core.langfuse_setup import get_langfuse_handler
+            from app.core.langfuse_setup import build_langgraph_config
 
-            handler = get_langfuse_handler()
-            lc_config = {"callbacks": [handler]} if handler else None
+            lc_config = build_langgraph_config(config.name)
             final_state = await graph.ainvoke(initial_state, config=lc_config)
             # LangGraph may return a plain dict even when the schema is a dataclass.
             if isinstance(final_state, dict):

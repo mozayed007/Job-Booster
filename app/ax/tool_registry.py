@@ -82,7 +82,14 @@ def get_tool_definitions() -> dict[str, dict[str, Any]]:
 
 
 def get_manifest_tools() -> list[dict[str, Any]]:
-    """MCP tools/list payload (without internal keys)."""
+    """MCP tools/list payload (without internal keys), each flagged as available.
+
+    A tool is ``available=True`` when Job Booster has a resolvable handler for it
+    (i.e. it can actually be invoked). Inbound-only descriptors cached from
+    external MCP servers (github, notion, supabase, ...) are returned with
+    ``available=False`` so clients can advertise them without pretending they are
+    callable from this process.
+    """
     tools = []
     for spec in get_tool_definitions().values():
         tools.append(
@@ -90,9 +97,26 @@ def get_manifest_tools() -> list[dict[str, Any]]:
                 "name": spec["name"],
                 "description": spec.get("description", ""),
                 "inputSchema": spec.get("inputSchema", {}),
+                "available": resolve_handler(spec["name"]) is not None,
+                "inbound": bool(spec.get("_inbound", False)),
+                "source": spec.get("_source", "outbound"),
             }
         )
     return tools
+
+
+def get_available_tools() -> dict[str, dict[str, Any]]:
+    """Subset of :func:`get_tool_definitions` restricted to tools with a handler.
+
+    These are the tools that Pydantic AI / LangChain agents can actually call.
+    Use this (rather than ``get_tool_definitions``) when binding tools to agents
+    so descriptor-only inbound MCP schemas are never advertised as callable.
+    """
+    return {
+        name: spec
+        for name, spec in get_tool_definitions().items()
+        if resolve_handler(name) is not None
+    }
 
 
 def resolve_handler(tool_name: str) -> Callable[..., Awaitable[str]] | None:

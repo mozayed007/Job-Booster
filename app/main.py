@@ -10,6 +10,7 @@ from loguru import logger
 
 from app.api.analytics_routes import router as analytics_router
 from app.api.auth_routes import router as auth_router
+from app.api.ax_routes import router as ax_router
 from app.api.dashboard_routes import router as dashboard_router
 from app.api.discovery_routes import router as discovery_router
 from app.api.pipeline_routes import router as pipeline_router
@@ -118,6 +119,7 @@ app.include_router(pipeline_router, prefix="/api")
 app.include_router(discovery_router, prefix="/api")
 app.include_router(dashboard_router, prefix="/api")
 app.include_router(settings_router, prefix="/api")
+app.include_router(ax_router, prefix="/api")
 
 
 @app.get("/", tags=["Health"])

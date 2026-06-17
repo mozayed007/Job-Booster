@@ -7,15 +7,28 @@ stack" counterpart to the plain async engine and the LangGraph layer.
 
 from __future__ import annotations
 
+from contextlib import nullcontext
 from dataclasses import dataclass
-from typing import ClassVar
+from typing import Any, ClassVar
 
 from loguru import logger
 from pydantic_graph import BaseNode, End, Graph, GraphRunContext, GraphRunResult
 
+try:
+    import logfire
+except ImportError:  # pragma: no cover — logfire is optional at runtime
+    logfire = None  # type: ignore[assignment]
+
 from app.agents.base_agent import BaseAgent, load_agents
 from app.pipelines.engine import get_pipeline_config
 from app.pipelines.state import PipelineState
+
+
+def _span(name: str, **kwargs: Any):
+    """Return a logfire span context manager, or a no-op when logfire is absent."""
+    if logfire is not None:
+        return logfire.span(name, **kwargs)
+    return nullcontext()
 
 
 @dataclass
@@ -170,7 +183,8 @@ class PydanticGraphPipelineEngine:
         graph, start_node = build_pydantic_graph(pipeline_key)
 
         try:
-            run_result = await graph.run(start_node, state=initial_state)
+            with _span(f"pydantic_graph:{pipeline_key}", pipeline=config.name):
+                run_result = await graph.run(start_node, state=initial_state)
             return _extract_pipeline_state(run_result, initial_state)
         except Exception as exc:
             logger.error(f"pydantic-graph pipeline '{pipeline_key}' failed: {exc}")
