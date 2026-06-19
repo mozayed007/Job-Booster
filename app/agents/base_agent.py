@@ -99,7 +99,6 @@ class BaseAgent(ABC):
                     system_prompt=self.system_prompt,
                     retries=self.config.model_retries,
                     name=self.config.name,
-                    description=self.config.description,
                     tools=tools or [],
                 ),
             )

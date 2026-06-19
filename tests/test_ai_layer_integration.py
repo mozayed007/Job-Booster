@@ -24,9 +24,8 @@ class TestAgentAttribution:
     def test_create_agent_forwards_name(self):
         from app.core.model_registry import create_agent
 
-        agent = create_agent(system_prompt="test", name="Job Finder", description="finds jobs")
+        agent = create_agent(system_prompt="test", name="Job Finder")
         assert agent.name == "Job Finder"
-        assert agent.description == "finds jobs"
 
     def test_create_agent_omits_name_when_none(self):
         from app.core.model_registry import create_agent
@@ -46,11 +45,10 @@ class TestAgentAttribution:
             async def execute(self, state):
                 pass
 
-        config = AgentConfig(name="CV Extractor", description="extracts CVs")
+        config = AgentConfig(name="CV Extractor")
         agent = DummyAgent(config, Path("."))
         assert agent._agent is not None
         assert agent._agent.name == "CV Extractor"
-        assert agent._agent.description == "extracts CVs"
 
 
 # ---------------------------------------------------------------------------
@@ -310,9 +308,6 @@ class TestAXToolAvailability:
 
 class TestAXRoutes:
     """The /api/ax endpoints surface tools and agents to clients."""
-
-    def setUp(self):
-        self.client = TestClient(app)
 
     def test_ax_tools_endpoint(self):
         client = TestClient(app)
