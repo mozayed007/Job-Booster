@@ -18,8 +18,8 @@ class _TinyFishAPIError(Exception):
 try:
     from tinyfish import APIError, AsyncTinyFish
 except ImportError:
-    APIError = _TinyFishAPIError  # type: ignore[misc,assignment]
-    AsyncTinyFish = None  # type: ignore[misc,assignment]
+    APIError = _TinyFishAPIError
+    AsyncTinyFish = None
 
 
 @lru_cache(maxsize=1)

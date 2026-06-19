@@ -32,9 +32,9 @@ try:
     from tinyfish import APIError, AsyncTinyFish
     from tinyfish.search.types import SearchResult
 except ImportError:
-    APIError = _TinyFishAPIError  # type: ignore[misc,assignment]
-    AsyncTinyFish = None  # type: ignore[misc,assignment]
-    SearchResult = None  # type: ignore[misc,assignment]
+    APIError = _TinyFishAPIError
+    AsyncTinyFish = None
+    SearchResult = None
 
 
 def _span(name: str, **kwargs):
@@ -157,7 +157,8 @@ class TinyFishScraper(BaseCareerScraper):
         """Search for startups by criteria (domain, funding, location, etc.)."""
         try:
             resp = await self.client.search.query(query=query)
-            return resp.results[:max_results]
+            results: list[SearchResult] = resp.results[:max_results]
+            return results
         except APIError as e:
             logger.error(f"Startup search failed: {e}")
             return []
