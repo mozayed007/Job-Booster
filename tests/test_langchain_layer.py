@@ -495,32 +495,35 @@ class TestLangfuseSetup:
     """Test Langfuse observability integration."""
 
     def test_init_langfuse_no_keys(self, monkeypatch):
-        """No env vars set means no callback is added."""
-        import litellm
-
+        """No env vars set means no client is initialized."""
         monkeypatch.delenv("LANGFUSE_PUBLIC_KEY", raising=False)
         monkeypatch.delenv("LANGFUSE_SECRET_KEY", raising=False)
 
-        original = list(litellm.callbacks)
-        from app.core.langfuse_setup import init_langfuse
+        from app.core.langfuse_setup import (
+            _reset_langfuse_client,
+            get_langfuse_client,
+            init_langfuse,
+        )
 
+        _reset_langfuse_client()
         init_langfuse()
-        assert litellm.callbacks == original
+        assert get_langfuse_client() is None
 
-    def test_get_langfuse_handler_returns_none_without_keys(self, monkeypatch):
+    def test_get_langfuse_client_returns_none_without_keys(self, monkeypatch):
         monkeypatch.delenv("LANGFUSE_PUBLIC_KEY", raising=False)
         monkeypatch.delenv("LANGFUSE_SECRET_KEY", raising=False)
 
-        from app.core.langfuse_setup import get_langfuse_handler
+        from app.core.langfuse_setup import _reset_langfuse_client, get_langfuse_client
 
-        assert get_langfuse_handler() is None
+        _reset_langfuse_client()
+        assert get_langfuse_client() is None
 
     def test_langfuse_import_is_optional(self):
         """langfuse_setup module can be imported even if langfuse package is absent."""
         import app.core.langfuse_setup as mod
 
         assert hasattr(mod, "init_langfuse")
-        assert hasattr(mod, "get_langfuse_handler")
+        assert hasattr(mod, "get_langfuse_client")
 
 
 # ---------------------------------------------------------------------------

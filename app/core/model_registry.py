@@ -294,15 +294,6 @@ class ModelRegistry:
             if self.settings.litellm_cache:
                 litellm.cache = litellm.Cache()
 
-            # Only enable the Logfire callback when a token is actually
-            # available; otherwise LiteLLM raises during every completion.
-            if os.getenv("LOGFIRE_TOKEN"):
-                try:
-                    litellm.success_callback = ["logfire"]
-                    litellm.failure_callback = ["logfire"]
-                except Exception:
-                    pass
-
             # Enable Langfuse OTEL callback when credentials are present.
             try:
                 from app.core.langfuse_setup import init_langfuse
@@ -685,6 +676,8 @@ def init_ai_stack():
             send_to_logfire="if-token-present",
         )
         logfire.instrument_httpx()
+        logfire.instrument_pydantic_ai()
+        logfire.instrument_litellm()
         logfire.info("Job_Booster AI stack initialized")
     except Exception:
         pass

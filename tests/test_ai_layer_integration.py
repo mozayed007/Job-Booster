@@ -71,18 +71,28 @@ class TestLangfuseIntegration:
 
         assert is_langfuse_enabled(public_key="pk-test", secret_key="sk-test") is True
 
-    def test_get_langfuse_handler_none_without_keys(self, monkeypatch):
+    def test_get_langfuse_client_none_without_keys(self, monkeypatch):
         monkeypatch.delenv("LANGFUSE_PUBLIC_KEY", raising=False)
         monkeypatch.delenv("LANGFUSE_SECRET_KEY", raising=False)
-        from app.core.langfuse_setup import get_langfuse_handler
+        from app.core.langfuse_setup import get_langfuse_client
 
-        assert get_langfuse_handler() is None
+        assert get_langfuse_client() is None
 
-    def test_get_langfuse_handler_with_explicit_keys(self):
-        from app.core.langfuse_setup import get_langfuse_handler
+    def test_get_langfuse_client_initialized_with_explicit_keys(self, monkeypatch):
+        monkeypatch.delenv("LANGFUSE_PUBLIC_KEY", raising=False)
+        monkeypatch.delenv("LANGFUSE_SECRET_KEY", raising=False)
+        from app.core.langfuse_setup import (
+            _reset_langfuse_client,
+            get_langfuse_client,
+            init_langfuse,
+        )
 
-        handler = get_langfuse_handler(public_key="pk-test", secret_key="sk-test")
-        assert handler is not None
+        monkeypatch.setenv("LANGFUSE_PUBLIC_KEY", "pk-test")
+        monkeypatch.setenv("LANGFUSE_SECRET_KEY", "sk-test")
+        _reset_langfuse_client()
+        init_langfuse()
+        client = get_langfuse_client()
+        assert client is not None
 
     def test_build_langgraph_config_none_without_keys(self, monkeypatch):
         monkeypatch.delenv("LANGFUSE_PUBLIC_KEY", raising=False)
@@ -96,21 +106,22 @@ class TestLangfuseIntegration:
 
         cfg = build_langgraph_config("full_application", public_key="pk-test", secret_key="sk-test")
         assert cfg is not None
-        assert "callbacks" in cfg
-        assert len(cfg["callbacks"]) == 1
+        assert "metadata" in cfg
         assert cfg["metadata"]["langfuse_session_id"] == "full_application"
         assert cfg["metadata"]["pipeline"] == "full_application"
 
     def test_init_langfuse_no_keys_is_noop(self, monkeypatch):
-        import litellm
-
         monkeypatch.delenv("LANGFUSE_PUBLIC_KEY", raising=False)
         monkeypatch.delenv("LANGFUSE_SECRET_KEY", raising=False)
-        before = list(litellm.callbacks)
-        from app.core.langfuse_setup import init_langfuse
+        from app.core.langfuse_setup import (
+            _reset_langfuse_client,
+            get_langfuse_client,
+            init_langfuse,
+        )
 
+        _reset_langfuse_client()
         init_langfuse()
-        assert litellm.callbacks == before
+        assert get_langfuse_client() is None
 
 
 # ---------------------------------------------------------------------------
