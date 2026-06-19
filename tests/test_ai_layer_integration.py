@@ -338,15 +338,15 @@ class TestAXRoutes:
 
 
 # ---------------------------------------------------------------------------
-# Pydantic AI MCP toolset surface (agents accept toolsets)
+# Agent creation sanity
 # ---------------------------------------------------------------------------
 
 
-class TestPydanticAIMcpToolsetSurface:
-    """Sanity-check that pydantic-ai Agent accepts a toolsets kwarg (MCP entry point)."""
+class TestAgentCreation:
+    """Sanity-check that create_agent works with valid kwargs."""
 
-    def test_agent_accepts_toolsets_kwarg(self):
+    def test_agent_accepts_tools_kwarg(self):
         from app.core.model_registry import create_agent
 
-        agent = create_agent(system_prompt="t", name="t", toolsets=[])
+        agent = create_agent(system_prompt="t", name="t", tools=[])
         assert agent is not None

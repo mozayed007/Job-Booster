@@ -496,7 +496,7 @@ class ModelRegistry:
 
             # Build FallbackModel with primary + all fallbacks
             all_models = [chain.primary_model_string] + chain.fallback_model_strings
-            return FallbackModel(*all_models)
+            return FallbackModel(*[_to_litellm(m) for m in all_models])
 
         except ImportError:
             logger.warning("pydantic-ai FallbackModel not available, using string model")
