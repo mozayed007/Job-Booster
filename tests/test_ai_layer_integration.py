@@ -7,11 +7,19 @@ handler wiring, tool availability) without making real LLM calls.
 
 from __future__ import annotations
 
+import os
 from unittest.mock import AsyncMock
 
+import pytest
 from fastapi.testclient import TestClient
 
 from app.main import app
+
+requires_env = pytest.mark.skipif(
+    not os.getenv("GEMINI_API_KEY"),
+    reason="Set GEMINI_API_KEY to run agent-creation tests",
+)
+
 
 # ---------------------------------------------------------------------------
 # Pydantic AI agent attribution (Langfuse / Logfire trace naming)
@@ -21,18 +29,21 @@ from app.main import app
 class TestAgentAttribution:
     """create_agent must forward name/description to pydantic-ai Agent."""
 
+    @requires_env
     def test_create_agent_forwards_name(self):
         from app.core.model_registry import create_agent
 
         agent = create_agent(system_prompt="test", name="Job Finder")
         assert agent.name == "Job Finder"
 
+    @requires_env
     def test_create_agent_omits_name_when_none(self):
         from app.core.model_registry import create_agent
 
         agent = create_agent(system_prompt="test")
         assert agent.name is None or agent.name == ""
 
+    @requires_env
     def test_base_agent_passes_config_name(self):
         """BaseAgent built from agents.yaml carries its config name onto the Agent."""
         from pathlib import Path
@@ -79,6 +90,7 @@ class TestLangfuseIntegration:
         assert get_langfuse_client() is None
 
     def test_get_langfuse_client_initialized_with_explicit_keys(self, monkeypatch):
+        pytest.importorskip("langfuse", reason="langfuse not installed")
         monkeypatch.delenv("LANGFUSE_PUBLIC_KEY", raising=False)
         monkeypatch.delenv("LANGFUSE_SECRET_KEY", raising=False)
         from app.core.langfuse_setup import (
@@ -356,6 +368,7 @@ class TestAXRoutes:
 class TestAgentCreation:
     """Sanity-check that create_agent works with valid kwargs."""
 
+    @requires_env
     def test_agent_accepts_tools_kwarg(self):
         from app.core.model_registry import create_agent
 
