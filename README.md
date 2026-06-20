@@ -6,7 +6,7 @@
 [![Pydantic AI](https://img.shields.io/badge/Pydantic%20AI-0.2%2B-purple)](https://ai.pydantic.dev/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![CI](https://github.com/mozayed007/Job-Booster/actions/workflows/ci.yml/badge.svg)](https://github.com/mozayed007/Job-Booster/actions/workflows/ci.yml)
-[![Tests](https://img.shields.io/badge/tests-213%2F24%20files-brightgreen)](tests/)
+[![Tests](https://img.shields.io/badge/tests-235%2F25%20files-brightgreen)](tests/)
 [![Docker](https://img.shields.io/badge/docker-ready-blue)](Dockerfile)
 
 **Stop copy-pasting resumes.** Job Booster is an AI platform that parses, tailors, reviews, and tracks your entire job application pipeline — powered by 9 specialized AI agents that work together.
@@ -301,7 +301,7 @@ ruff format --check .
 mypy app/
 ```
 
-213 tests across 24 files. CI runs on Python 3.10, 3.11, 3.12.
+235 tests across 25 files. CI runs on Python 3.10, 3.11, 3.12.
 
 ### Integration Tests (requires API key)
 
@@ -436,7 +436,7 @@ Job_Booster/
 │   └── tools/
 ├── data/                       # Sample resumes, jobs, startups
 ├── docs/                       # Vision, Architecture, Implementation
-├── tests/                      # 213 tests, 24 files
+├── tests/                      # 235 tests, 25 files
 ├── scripts/
 │   ├── run_app.py              # Launch script
 │   └── healthcheck.sh          # Docker health check
