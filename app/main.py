@@ -13,6 +13,8 @@ from app.api.auth_routes import router as auth_router
 from app.api.ax_routes import router as ax_router
 from app.api.dashboard_routes import router as dashboard_router
 from app.api.discovery_routes import router as discovery_router
+from app.api.gap_recommendation_routes import router as gap_recommendation_router
+from app.api.onboarding_routes import router as onboarding_router
 from app.api.pipeline_routes import router as pipeline_router
 from app.api.recommendation_routes import router as recommendation_router
 from app.api.resume_routes import router as resume_router
@@ -120,6 +122,8 @@ app.include_router(discovery_router, prefix="/api")
 app.include_router(dashboard_router, prefix="/api")
 app.include_router(settings_router, prefix="/api")
 app.include_router(ax_router, prefix="/api")
+app.include_router(onboarding_router, prefix="/api")
+app.include_router(gap_recommendation_router, prefix="/api")
 
 
 @app.get("/", tags=["Health"])

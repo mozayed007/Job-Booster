@@ -290,6 +290,16 @@ def _build_agent_instance(
 
         return InterviewCoachAgent(agent_config, base_dir)
 
+    elif key == "onboarding_agent":
+        from app.agents.onboarding import OnboardingAgent
+
+        return OnboardingAgent(agent_config, base_dir)
+
+    elif key == "gap_recommendation_agent":
+        from app.agents.gap_recommendation import GapRecommendationAgent
+
+        return GapRecommendationAgent(agent_config, base_dir)
+
     else:
         logger.warning(f"Unknown agent key: {key}")
         return None

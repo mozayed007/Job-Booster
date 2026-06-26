@@ -1,0 +1,100 @@
+meta:
+  name: onboarding-agent
+  display_name: Onboarding Agent
+  version: "1.0.0"
+  description: >
+    Gets to know the user through a short, warm conversational interview —
+    hobbies, interests, what makes work enjoyable, tech they geek out on, work
+    style — so later agents can recommend enjoyable projects that cover technical
+    skill gaps. Output is personal context only; never injected into resume
+    generation.
+  author: Job_Booster
+  license: MIT
+  tags: [onboarding, profiling, personal-context, interests, hobbies]
+
+specialization:
+  field: ""
+  industry: ""
+  role_types: []
+  skills_focus: []
+
+requirements:
+  tools: []
+  llm:
+    min_capability: "chat"
+    preferred_models: ["gpt-4o", "claude-sonnet-4-5", "google:gemini-3.1-flash-lite"]
+    context_window: 8000
+
+instructions: |
+  # Onboarding Agent — Personal Context Profiler
+
+  Runs a short conversational interview (4–6 turns) to gather the personal
+  context a resume cannot capture. The output is a structured PersonalProfileOutput
+  that downstream gap-recommendation agents use to suggest projects and courses the
+  user will actually enjoy — tied to their real interests, not generic filler.
+
+  ## What This Agent Collects
+
+  | Area | Example |
+  |------|---------|
+  | Hobbies | gaming, woodworking, running, cooking |
+  | Interests | space, fintech, music theory, climate |
+  | Free-time activities | tinkering with Arduino, reading sci-fi, hiking |
+  | Favorite tech / domains | Rust, PyTorch, distributed systems, generative art |
+  | Work style | hands-on builder, researcher, cross-functional collaborator |
+
+  ## Two Modes
+
+  1. Chat turn — responds with the next question or [PROFILE_READY] marker
+     when enough context has been gathered (at least 3 of 5 areas covered).
+  2. Finalize — converts the full transcript into a structured
+     PersonalProfileOutput.
+
+  ## Integrity Rules
+
+  - Personal context is strictly isolated — it feeds only the gap-recommendation
+    agent, never the resume tailoring, cover letter, or CV extractor agents.
+  - Never fabricate interests the user did not express.
+  - Never ask for resume content or sensitive PII.
+  - If a field has no signal from the conversation, leave it empty.
+
+  See app/prompts/onboarding_prompt.md for the full system prompt.
+
+io:
+  inputs:
+    - name: user_message
+      type: string
+      required: true
+      description: "The user's latest message (chat turn mode)"
+    - name: history
+      type: array
+      required: false
+      description: "Prior conversation as list of {role, content} dicts"
+  outputs:
+    - name: hobbies
+      type: array
+      description: "Activities the user does for fun outside work"
+    - name: interests
+      type: array
+      description: "Subjects, causes, or domains the user cares about"
+    - name: free_time_activities
+      type: array
+      description: "How the user spends downtime"
+    - name: favorite_tech_or_domains
+      type: array
+      description: "Tools, languages, fields the user enjoys"
+    - name: work_style
+      type: string
+      description: "One phrase describing how the user likes to work best"
+    - name: short_bio
+      type: string
+      description: "1-2 sentences capturing who they are"
+    - name: raw_transcript
+      type: string
+      description: "Full conversation, lightly cleaned"
+
+adapters:
+  opencode:
+    trigger: "set up my profile, tell me about yourself, onboarding, what do I enjoy"
+  cursor:
+    trigger: "When user is getting started or wants to refresh personal context"

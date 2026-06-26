@@ -87,3 +87,19 @@ pipelines:
     steps:
       - agent: interview-coach
         description: "Generate tailored interview coaching material"
+
+  onboarding:
+    name: "Onboarding Profile Setup"
+    description: "Conversational interview that gathers hobbies, interests, and personal context for later gap-recommendation agents"
+    enabled: true
+    steps:
+      - agent: onboarding-agent
+        description: "Finalize personal context from onboarding conversation"
+
+  gap_recommendation:
+    name: "Enjoyable Gap Recommendations"
+    description: "Recommend projects and courses covering technical skill gaps using the user's personal context"
+    enabled: true
+    steps:
+      - agent: gap-recommendation
+        description: "Generate enjoyable recommendations for skill gaps"

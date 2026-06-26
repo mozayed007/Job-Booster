@@ -11,7 +11,9 @@ from pydantic import BaseModel, ValidationError
 
 from app.agents.cover_letter import CoverLetterOutput
 from app.agents.cv_extractor import CVExtractorOutput
+from app.agents.gap_recommendation import GapRecommendationOutput
 from app.agents.job_finder import JobFinderOutput
+from app.agents.onboarding import PersonalProfileOutput
 from app.agents.resume_reviewer import ResumeReviewerOutput
 from app.agents.resume_tailor import TailoredResumeOutput
 from app.langchain_layer import prompts
@@ -258,12 +260,84 @@ class LCJobFinderAgent(LangChainAgent):
         return JobFinderOutput(summary=str(output))
 
 
+class LCOnboardingAgent(LangChainAgent):
+    """LangChain version of the Onboarding agent.
+
+    Uses a plain (non-structured-output) model invocation for free-text chat
+    turns, and the structured-output chain for finalize.
+    """
+
+    output_type = PersonalProfileOutput
+
+    async def chat_turn(self, user_msg: str, history: list[dict] | None = None) -> str:
+        """Return the next question or [PROFILE_READY]."""
+        if not user_msg.strip():
+            return "Please share something about yourself."
+        transcript_parts: list[str] = []
+        for turn in history or []:
+            role = turn.get("role", "user")
+            content = turn.get("content", "")
+            label = "User" if role == "user" else "Assistant"
+            transcript_parts.append(f"{label}: {content}")
+        transcript = "\n".join(transcript_parts)
+        prompt = prompts.build_onboarding_chat_prompt(transcript, user_msg)
+        try:
+            messages = [
+                SystemMessage(content=self.system_prompt),
+                HumanMessage(content=prompt),
+            ]
+            result = await self.model.ainvoke(messages)
+            content = result.content if hasattr(result, "content") else str(result)
+            return str(content)
+        except Exception as exc:
+            logger.error(f"LCOnboardingAgent chat_turn failed: {exc}")
+            return f"Sorry, I had trouble responding. (Error: {exc})"
+
+    async def finalize(self, history: list[dict]) -> PersonalProfileOutput:
+        """Convert a transcript into a structured profile."""
+        if not history:
+            return PersonalProfileOutput()
+        prompt = prompts.build_onboarding_finalize_prompt(history)
+        output = await self.run(prompt)
+        if isinstance(output, PersonalProfileOutput):
+            return output
+        return PersonalProfileOutput(raw_transcript=prompt)
+
+
+class LCGapRecommendationAgent(LangChainAgent):
+    """LangChain version of the Gap Recommendation agent."""
+
+    output_type = GapRecommendationOutput
+
+    async def recommend(
+        self,
+        gaps: list[str],
+        personal_context: dict | None = None,
+        job_context: str = "",
+    ) -> GapRecommendationOutput:
+        """Generate enjoyable recommendations covering skill gaps."""
+        if not gaps:
+            return GapRecommendationOutput(summary="No skill gaps provided — nothing to recommend.")
+        prompt = prompts.build_gap_recommendation_prompt(gaps, personal_context or {}, job_context)
+        output = await self.run(prompt)
+        if isinstance(output, GapRecommendationOutput):
+            if not output.uncovered_gaps and not output.recommendations:
+                output.uncovered_gaps = list(gaps)
+            return output
+        return GapRecommendationOutput(
+            summary=str(output),
+            uncovered_gaps=list(gaps),
+        )
+
+
 AGENT_REGISTRY: dict[str, type[LangChainAgent]] = {
     "cv_extractor": LCCvExtractorAgent,
     "resume_reviewer": LCResumeReviewerAgent,
     "resume_tailor": LCResumeTailorAgent,
     "cover_letter_generator": LCCoverLetterAgent,
     "job_finder": LCJobFinderAgent,
+    "onboarding_agent": LCOnboardingAgent,
+    "gap_recommendation_agent": LCGapRecommendationAgent,
 }
 
 

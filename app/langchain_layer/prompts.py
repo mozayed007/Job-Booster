@@ -156,3 +156,78 @@ def build_job_finder_prompt(
     )
 
     return "\n".join(parts)
+
+
+def build_onboarding_chat_prompt(transcript: str, user_msg: str) -> str:
+    """Prompt for a single onboarding chat turn (free-text response)."""
+    parts = ["CHAT: You are mid-conversation with the user."]
+    if transcript:
+        parts.extend(["", "Conversation so far:", transcript])
+    parts.extend(
+        [
+            "",
+            f"User's latest message: {user_msg}",
+            "",
+            "Respond with your next question (1-3 sentences), or emit "
+            "[PROFILE_READY] on its own line if you have enough across at "
+            "least 3 of the 5 areas (hobbies, interests, free-time, favorite "
+            "tech/domains, work style).",
+        ]
+    )
+    return "\n".join(parts)
+
+
+def build_onboarding_finalize_prompt(history: list[dict]) -> str:
+    """Prompt to finalize an onboarding conversation into a structured profile."""
+    lines: list[str] = []
+    for turn in history:
+        role = turn.get("role", "user")
+        content = turn.get("content", "")
+        label = "User" if role == "user" else "Assistant"
+        lines.append(f"{label}: {content}")
+    transcript = "\n".join(lines)
+    return (
+        f"FINALIZE: Convert this onboarding conversation into a structured profile.\n\n{transcript}"
+    )
+
+
+def build_gap_recommendation_prompt(
+    gaps: list[str],
+    personal_context: dict | None = None,
+    job_context: str = "",
+) -> str:
+    """Prompt for the gap-recommendation agent."""
+    import json
+
+    parts = [
+        "Generate enjoyable, personalized recommendations that cover the "
+        "following technical skill gaps.",
+        "",
+        "## Skill Gaps",
+    ]
+    for gap in gaps:
+        parts.append(f"- {gap}")
+
+    parts.extend(["", "## Personal Context"])
+    if personal_context and any(personal_context.values()):
+        parts.append("```json")
+        parts.append(json.dumps(personal_context, indent=2, default=str))
+        parts.append("```")
+    else:
+        parts.append(
+            "(No personal context provided — user has not completed onboarding. "
+            "Produce broadly engaging recs and note the profile was empty.)"
+        )
+
+    if job_context:
+        parts.extend(["", f"## Job Context\n{job_context}"])
+
+    parts.extend(
+        [
+            "",
+            f"Provide 1-3 recommendations per gap (fewer per gap when there are "
+            f"many gaps — scale by gap count). Map each rec to a specific hobby or "
+            f"interest from the personal context. Total gaps: {len(gaps)}.",
+        ]
+    )
+    return "\n".join(parts)

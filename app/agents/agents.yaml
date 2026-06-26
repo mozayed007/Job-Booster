@@ -61,3 +61,17 @@ agents:
     enabled: true
     skill: "interview-coach.md"
     system_prompt: "../prompts/interview_coach_prompt.md"
+
+  onboarding_agent:
+    name: "Onboarding Agent"
+    description: "Conversational interview that gathers hobbies, interests, and personal context for gap-recommendation agents"
+    enabled: true
+    skill: "onboarding-agent.md"
+    system_prompt: "../prompts/onboarding_prompt.md"
+
+  gap_recommendation_agent:
+    name: "Gap Recommendation Agent"
+    description: "Recommends enjoyable projects and courses that cover technical skill gaps using the user's personal context"
+    enabled: true
+    skill: "gap-recommendation.md"
+    system_prompt: "../prompts/gap_recommendation_prompt.md"

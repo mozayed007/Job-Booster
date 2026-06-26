@@ -231,6 +231,80 @@ async def skill_gap(resume_id: int, job_id: int) -> dict:
         return _success_data(_handle_json_response(resp))
 
 
+async def recommend_enjoyable_gaps(resume_id: int, job_id: int, token: str = "") -> dict:
+    """GET /api/recommendations/enjoyable/{resume_id}/{job_id}.
+
+    Returns enjoyable project/course recommendations covering skill gaps,
+    personalized with the user's onboarding profile when a token is provided.
+    Works without auth (returns broadly engaging recs) but benefits from a
+    personal_context from onboarding.
+    """
+    async with httpx.AsyncClient(timeout=90.0) as client:
+        resp = await client.get(
+            f"{API_URL}/api/recommendations/enjoyable/{resume_id}/{job_id}",
+            headers=_auth_headers(token),
+        )
+        if resp.status_code == 401:
+            return {"Error": "Login required"}
+        return _handle_json_response(resp)
+
+
+# ---------------------------------------------------------------------------
+# Onboarding (personal context)
+# ---------------------------------------------------------------------------
+
+
+async def onboarding_chat(token: str, user_message: str, history: list) -> dict:
+    """POST /api/onboarding/chat."""
+    async with httpx.AsyncClient(timeout=90.0) as client:
+        resp = await client.post(
+            f"{API_URL}/api/onboarding/chat",
+            json={"user_message": user_message, "history": history},
+            headers=_auth_headers(token),
+        )
+        if resp.status_code == 401:
+            return {"Error": "Login required"}
+        return _handle_json_response(resp)
+
+
+async def onboarding_get_profile(token: str) -> dict:
+    """GET /api/onboarding/profile."""
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        resp = await client.get(
+            f"{API_URL}/api/onboarding/profile",
+            headers=_auth_headers(token),
+        )
+        if resp.status_code == 401:
+            return {"Error": "Login required"}
+        return _handle_json_response(resp)
+
+
+async def onboarding_save_profile(token: str, profile: dict) -> dict:
+    """PUT /api/onboarding/profile."""
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        resp = await client.put(
+            f"{API_URL}/api/onboarding/profile",
+            json={"profile": profile},
+            headers=_auth_headers(token),
+        )
+        if resp.status_code == 401:
+            return {"Error": "Login required"}
+        return _handle_json_response(resp)
+
+
+async def onboarding_finalize(token: str, history: list) -> dict:
+    """POST /api/onboarding/finalize."""
+    async with httpx.AsyncClient(timeout=90.0) as client:
+        resp = await client.post(
+            f"{API_URL}/api/onboarding/finalize",
+            json={"history": history},
+            headers=_auth_headers(token),
+        )
+        if resp.status_code == 401:
+            return {"Error": "Login required"}
+        return _handle_json_response(resp)
+
+
 # ---------------------------------------------------------------------------
 # Application tracker
 # ---------------------------------------------------------------------------

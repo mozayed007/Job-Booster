@@ -19,10 +19,12 @@ from app.ui.api_client import (
     skill_trends,
     track_application,
 )
+from app.ui.api_client import recommend_enjoyable_gaps as _rec_enjoyable
 from app.ui.auth_tab import build_auth_tab
 from app.ui.discovery_tab import build_discovery_corpus_tab
 from app.ui.helpers import run_async
 from app.ui.job_boards_tab import build_job_boards_tab
+from app.ui.onboarding_tab import build_onboarding_tab
 from app.ui.pipelines_tab import build_pipelines_tab
 from app.ui.scanner_tab import build_scanner_tab
 
@@ -106,6 +108,13 @@ def skill_gap_ui(resume_id, job_id):
         return _err(str(e))
 
 
+def enjoyable_gaps_ui(token, resume_id, job_id):
+    try:
+        return run_async(_rec_enjoyable(int(resume_id), int(job_id), token or ""))
+    except Exception as e:
+        return _err(str(e))
+
+
 def track_application_ui(company, position, status, notes):
     if not company or not position:
         return _err("Company and position are required")
@@ -167,6 +176,9 @@ with gr.Blocks(title="Job Booster") as app:
                 dash_load_btn = gr.Button("Refresh dashboard", variant="primary")
             dash_output = gr.JSON(label="Dashboard")
             dash_load_btn.click(fn=dashboard_ui, inputs=[dash_resume_id], outputs=[dash_output])
+
+        with gr.Tab("Onboarding"):
+            build_onboarding_tab(api_token)
 
         with gr.Tab("Apply"):
             gr.Markdown(
@@ -265,11 +277,22 @@ with gr.Blocks(title="Job Booster") as app:
                 sg_job = gr.Number(label="Job ID", precision=0)
                 sg_btn = gr.Button("Skill gap")
                 sg_out = gr.JSON(label="Gap analysis")
+            with gr.Row():
+                eg_btn = gr.Button(
+                    "Enjoyable project recs (uses your onboarding profile)",
+                    variant="primary",
+                )
+                eg_out = gr.JSON(label="Enjoyable recommendations")
             rec_jobs_btn.click(fn=recommend_jobs_ui, inputs=[rec_resume_id], outputs=[rec_jobs_out])
             rec_resumes_btn.click(
                 fn=recommend_resumes_ui, inputs=[rec_job_id], outputs=[rec_resumes_out]
             )
             sg_btn.click(fn=skill_gap_ui, inputs=[sg_resume, sg_job], outputs=[sg_out])
+            eg_btn.click(
+                fn=enjoyable_gaps_ui,
+                inputs=[api_token, sg_resume, sg_job],
+                outputs=[eg_out],
+            )
 
         with gr.Tab("Applications"):
             with gr.Row():
