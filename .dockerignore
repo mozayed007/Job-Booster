@@ -7,6 +7,9 @@ __pycache__
 data/qdrant/
 outputs/
 node_modules/
+**/node_modules/
+.next/
+**/.next/
 *.pyc
 *.pyo
 .mypy_cache
@@ -17,3 +20,4 @@ docs/
 !README.md
 LICENSE
 .gitignore
+frontend/.env*.local

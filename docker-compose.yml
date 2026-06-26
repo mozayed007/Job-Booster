@@ -1,46 +1,97 @@
 services:
-  app:
+  # ═══════════════════════════════════════════════════════════════════
+  #  BACKEND — FastAPI (port 8000) + Gradio (port 8050)
+  #  • SQLite DB (file-based, persisted in volume)
+  #  • Qdrant embedded vector store (file-based, persisted in volume)
+  # ═══════════════════════════════════════════════════════════════════
+  backend:
     build:
       context: .
       dockerfile: Dockerfile
+    container_name: job-booster-backend
     ports:
       - "8000:8000"
       - "8050:8050"
     env_file:
       - .env
+    environment:
+      # Override CORS for Docker network so Next.js + Gradio both work
+      CORS_ORIGINS: "http://localhost:3000,http://localhost:8050"
+      # Tell backend that the frontend is the Next.js container
+      API_URL: "http://localhost:8000"
+      # SQLite is file-based — stored in the mounted volume
+      DATABASE_URL: "sqlite:///./data/job_booster.db"
+      # Required: JWT secret must be set when DEBUG=False
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-hackathon-demo-secret-change-in-prod}
+      # Enable debug mode for hackathon demo (API docs at /docs, relaxed guards)
+      DEBUG: "true"
+      # Optional: point to standalone Qdrant container if enabled below
+      # QDRANT_URL: "http://qdrant:6333"
     volumes:
       - ./data:/app/data
       - ./outputs:/app/outputs
+      - ./profiles:/app/profiles
+      - ./config:/app/config
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
       timeout: 10s
+      start_period: 20s
+      retries: 3
+
+  # ═══════════════════════════════════════════════════════════════════
+  #  FRONTEND — Next.js web app (port 3000)
+  #  • Talks to backend on port 8000
+  #  • Cookie-based JWT auth via route handlers
+  # ═══════════════════════════════════════════════════════════════════
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: job-booster-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      # Browser-facing URL (host browser talks to localhost:8000)
+      NEXT_PUBLIC_API_URL: "http://localhost:8000"
+      # Server-side route handlers talk to backend over Docker network
+      API_URL_INTERNAL: "http://backend:8000"
+      NODE_ENV: production
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/login',r=>{process.exit(r.statusCode===200?0:1)}).on('error',()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
       start_period: 15s
       retries: 3
 
-  # ── Optional: PostgreSQL (uncomment to switch from SQLite) ────────
-  # To migrate:
-  #   1. Update DATABASE_URL in .env to postgresql+asyncpg://user:pass@db:5432/jobbooster
-  #   2. Uncomment the db service below
-  #   3. Run docker compose up -d
+  # ═══════════════════════════════════════════════════════════════════
+  #  OPTIONAL: Standalone Qdrant server (uncomment to switch from
+  #  embedded file-based Qdrant to a dedicated container)
   #
-  # db:
-  #   image: postgres:16-alpine
-  #   environment:
-  #     POSTGRES_USER: jobbooster
-  #     POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
-  #     POSTGRES_DB: jobbooster
+  #  To enable:
+  #   1. Uncomment the qdrant service below
+  #   2. Uncomment QDRANT_URL in backend environment above
+  #   3. Update app/services/vector_store.py to use QdrantClient(url=...)
+  #
+  # qdrant:
+  #   image: qdrant/qdrant:v1.12.4
+  #   container_name: job-booster-qdrant
   #   ports:
-  #     - "5432:5432"
+  #     - "6333:6333"
+  #     - "6334:6334"
   #   volumes:
-  #     - pgdata:/var/lib/postgresql/data
+  #     - qdrant_data:/qdrant/storage
   #   restart: unless-stopped
   #   healthcheck:
-  #     test: ["CMD-SHELL", "pg_isready -U jobbooster"]
-  #     interval: 10s
+  #     test: ["CMD-SHELL", "bash -c ':> /dev/tcp/127.0.0.1/6333' || exit 1"]
+  #     interval: 15s
   #     timeout: 5s
   #     retries: 5
 
 # volumes:
-#   pgdata:
+  # qdrant_data:

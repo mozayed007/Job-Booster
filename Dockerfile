@@ -26,6 +26,8 @@ WORKDIR /app
 COPY --from=builder /build/app/ ./app/
 COPY --from=builder /build/scripts/ ./scripts/
 COPY --from=builder /build/data/ ./data/
+COPY --from=builder /build/profiles/ ./profiles/
+COPY --from=builder /build/config/ ./config/
 COPY --from=builder /build/pyproject.toml ./
 
 RUN groupadd -r appuser && useradd -r -g appuser -d /app appuser \
